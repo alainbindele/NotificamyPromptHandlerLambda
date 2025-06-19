@@ -1,0 +1,54 @@
+# Database configuration
+quarkus:
+  datasource:
+    db-kind: mysql
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
+    jdbc:
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:notifyme}
+      max-size: 16
+
+  hibernate-orm:
+    database:
+      generation: none
+    log:
+      sql: ${QUARKUS_LOG_SQL:false}
+
+  # AWS Configuration
+  sqs:
+    endpoint-override: ${AWS_SQS_ENDPOINT:}
+    aws:
+      region: ${AWS_REGION:us-east-1}
+      credentials:
+        type: default
+
+  ses:
+    endpoint-override: ${AWS_SES_ENDPOINT:}
+    aws:
+      region: ${AWS_REGION:us-east-1}
+      credentials:
+        type: default
+
+  # Lambda configuration
+  lambda:
+    handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler
+
+# Application configuration
+app:
+  openai:
+    api-key: ${OPENAI_API_KEY:your-openai-api-key}
+    api-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
+  
+  aws:
+    sqs:
+      queue-url: ${AWS_SQS_QUEUE_URL:}
+    ses:
+      from-email: ${AWS_SES_FROM_EMAIL:noreply@notifyme.com}
+      from-name: ${AWS_SES_FROM_NAME:Notificamy}
+
+# Logging
+quarkus:
+  log:
+    level: INFO
+    category:
+      "com.notificamy": DEBUG
