@@ -1,5 +1,6 @@
-package com.notificamy.service;
+package com.notificamy.infrastructure.adapter.notification.strategy;
 
+import com.notificamy.domain.model.NotificationRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -8,9 +9,9 @@ import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.*;
 
 @ApplicationScoped
-public class EmailService {
+public class EmailNotificationStrategy implements NotificationStrategy {
     
-    private static final Logger LOG = Logger.getLogger(EmailService.class);
+    private static final Logger LOG = Logger.getLogger(EmailNotificationStrategy.class);
     
     @Inject
     SesClient sesClient;
@@ -21,16 +22,17 @@ public class EmailService {
     @ConfigProperty(name = "app.aws.ses.from-name")
     String fromName;
     
-    public void sendNotificationEmail(String toEmail, String userName, String prompt, String aiResponse) {
+    @Override
+    public void sendNotification(NotificationRequest request) {
         try {
             String subject = "Notificamy: Your AI-Generated Notification";
-            String htmlBody = buildHtmlEmailBody(userName, prompt, aiResponse);
-            String textBody = buildTextEmailBody(userName, prompt, aiResponse);
+            String htmlBody = buildHtmlEmailBody(request);
+            String textBody = buildTextEmailBody(request);
             
             SendEmailRequest emailRequest = SendEmailRequest.builder()
                     .source(fromName + " <" + fromEmail + ">")
                     .destination(Destination.builder()
-                            .toAddresses(toEmail)
+                            .toAddresses(request.getUser().getEmail())
                             .build())
                     .message(Message.builder()
                             .subject(Content.builder()
@@ -51,15 +53,16 @@ public class EmailService {
                     .build();
             
             SendEmailResponse response = sesClient.sendEmail(emailRequest);
-            LOG.infof("Email sent successfully to %s. Message ID: %s", toEmail, response.messageId());
+            LOG.infof("Email sent successfully to %s. Message ID: %s", 
+                    request.getUser().getEmail(), response.messageId());
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send email to %s", toEmail);
+            LOG.errorf(e, "Failed to send email to %s", request.getUser().getEmail());
             throw new RuntimeException("Failed to send email", e);
         }
     }
     
-    private String buildHtmlEmailBody(String userName, String prompt, String aiResponse) {
+    private String buildHtmlEmailBody(NotificationRequest request) {
         return String.format("""
                 <!DOCTYPE html>
                 <html>
@@ -79,8 +82,8 @@ public class EmailService {
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>🔔 Notificamy</h1>
-                            <p>Your AI-Powered Notification</p>
+                            <h1>📧 Notificamy</h1>
+                            <p>Your AI-Powered Email Notification</p>
                         </div>
                         <div class="content">
                             <h2>Hello %s!</h2>
@@ -105,14 +108,14 @@ public class EmailService {
                 </body>
                 </html>
                 """, 
-                userName != null ? userName : "User", 
-                prompt, 
-                aiResponse.replace("\n", "<br>"));
+                request.getUser().getName() != null ? request.getUser().getName() : "User", 
+                request.getPrompt(), 
+                request.getAiResponse().replace("\n", "<br>"));
     }
     
-    private String buildTextEmailBody(String userName, String prompt, String aiResponse) {
+    private String buildTextEmailBody(NotificationRequest request) {
         return String.format("""
-                Notificamy - Your AI-Powered Notification
+                Notificamy - Your AI-Powered Email Notification
                 
                 Hello %s!
                 
@@ -128,8 +131,8 @@ public class EmailService {
                 
                 © 2024 Notificamy. Revolutionizing notifications with AI.
                 """, 
-                userName != null ? userName : "User", 
-                prompt, 
-                aiResponse);
+                request.getUser().getName() != null ? request.getUser().getName() : "User", 
+                request.getPrompt(), 
+                request.getAiResponse());
     }
 }

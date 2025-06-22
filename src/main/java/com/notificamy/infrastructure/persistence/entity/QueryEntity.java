@@ -1,11 +1,11 @@
-package com.notificamy.entity;
+package com.notificamy.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "queries")
-public class Query {
+public class QueryEntity {
     
     @Id
     @Column(name = "id")
@@ -29,18 +29,15 @@ public class Query {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
+    @Column(name = "enabled_channels")
+    private String enabledChannels; // JSON string of enabled channels
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
+    private UserEntity user;
 
     // Constructors
-    public Query() {}
-
-    public Query(Long id, Long userId, String prompt) {
-        this.id = id;
-        this.userId = userId;
-        this.prompt = prompt;
-    }
+    public QueryEntity() {}
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -64,6 +61,9 @@ public class Query {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public String getEnabledChannels() { return enabledChannels; }
+    public void setEnabledChannels(String enabledChannels) { this.enabledChannels = enabledChannels; }
+
+    public UserEntity getUser() { return user; }
+    public void setUser(UserEntity user) { this.user = user; }
 }

@@ -1,4 +1,4 @@
-package com.notificamy.dto;
+package com.notificamy.infrastructure.external.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;

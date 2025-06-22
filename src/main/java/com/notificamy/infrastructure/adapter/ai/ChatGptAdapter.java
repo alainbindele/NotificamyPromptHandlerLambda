@@ -1,7 +1,8 @@
-package com.notificamy.service;
+package com.notificamy.infrastructure.adapter.ai;
 
-import com.notificamy.dto.ChatGptResponse;
-import com.notificamy.dto.OpenAiRequest;
+import com.notificamy.domain.port.AiServicePort;
+import com.notificamy.infrastructure.external.dto.ChatGptResponse;
+import com.notificamy.infrastructure.external.dto.OpenAiRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -12,9 +13,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
-public class ChatGptService {
+public class ChatGptAdapter implements AiServicePort {
     
-    private static final Logger LOG = Logger.getLogger(ChatGptService.class);
+    private static final Logger LOG = Logger.getLogger(ChatGptAdapter.class);
     
     @ConfigProperty(name = "app.openai.api-key")
     String apiKey;
@@ -24,10 +25,11 @@ public class ChatGptService {
     
     private final Client client;
     
-    public ChatGptService() {
+    public ChatGptAdapter() {
         this.client = ClientBuilder.newClient();
     }
     
+    @Override
     public String processPrompt(String prompt) {
         try {
             String policy = buildPolicy();
@@ -70,13 +72,13 @@ public class ChatGptService {
                 
                 Rules:
                 1. Always respond in a helpful and professional manner
-                2. Focus on notification-related tasks (email, WhatsApp, Slack)
+                2. Focus on notification-related tasks (email, WhatsApp, Slack, Discord)
                 3. Help users define when, how, and what they want to be notified about
                 4. Suggest appropriate notification schedules (periodic, specific dates/times)
                 5. If the request is not notification-related, politely redirect to notification use cases
                 6. Keep responses concise and actionable
                 7. Always prioritize user privacy and security
-                8. Format your response as if it's content for an email notification
+                8. Format your response as if it's content for a notification across multiple channels
                 
                 Format your response as a structured notification plan when possible.
                 """;

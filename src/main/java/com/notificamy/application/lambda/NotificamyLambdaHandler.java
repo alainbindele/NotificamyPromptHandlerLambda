@@ -1,14 +1,12 @@
-package com.notificamy.lambda;
+package com.notificamy.application.lambda;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.notificamy.dto.SqsMessage;
-import com.notificamy.entity.Query;
-import com.notificamy.repository.QueryRepository;
-import com.notificamy.service.ChatGptService;
-import com.notificamy.service.EmailService;
+import com.notificamy.domain.service.NotificationService;
+import com.notificamy.infrastructure.external.dto.SqsMessage;
+import com.notificamy.infrastructure.mapper.SqsMessageMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.jboss.logging.Logger;
@@ -19,13 +17,10 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
     private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
     
     @Inject
-    QueryRepository queryRepository;
+    NotificationService notificationService;
     
     @Inject
-    ChatGptService chatGptService;
-    
-    @Inject
-    EmailService emailService;
+    SqsMessageMapper sqsMessageMapper;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -54,37 +49,17 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
     private void processMessage(SQSEvent.SQSMessage sqsMessage) throws Exception {
         LOG.infof("Processing message: %s", sqsMessage.getBody());
         
-        // Parse SQS message
+        // Parse SQS message using external DTO
         SqsMessage message = objectMapper.readValue(sqsMessage.getBody(), SqsMessage.class);
         LOG.infof("Parsed message: %s", message);
         
-        // Fetch query with user information
-        Query query = queryRepository.findByIdWithUser(message.getQueryId());
-        if (query == null) {
-            LOG.errorf("Query not found with ID: %d", message.getQueryId());
-            throw new RuntimeException("Query not found: " + message.getQueryId());
-        }
+        // Extract domain values using mapper
+        Long queryId = sqsMessageMapper.extractQueryId(message);
+        String prompt = sqsMessageMapper.extractPrompt(message);
         
-        if (query.getUser() == null) {
-            LOG.errorf("User not found for query ID: %d", message.getQueryId());
-            throw new RuntimeException("User not found for query: " + message.getQueryId());
-        }
+        // Delegate to domain service
+        notificationService.processNotificationRequest(queryId, prompt);
         
-        LOG.infof("Processing query for user: %s", query.getUser().getEmail());
-        
-        // Process prompt with ChatGPT
-        String aiResponse = chatGptService.processPrompt(message.getPrompt());
-        LOG.infof("AI response generated for query %d", message.getQueryId());
-        
-        // Send email notification
-        emailService.sendNotificationEmail(
-                query.getUser().getEmail(),
-                query.getUser().getName(),
-                message.getPrompt(),
-                aiResponse
-        );
-        
-        LOG.infof("Notification email sent to %s for query %d", 
-                query.getUser().getEmail(), message.getQueryId());
+        LOG.infof("Message processed successfully for query ID: %d", queryId);
     }
 }

@@ -1,4 +1,4 @@
-package com.notificamy.entity;
+package com.notificamy.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -6,7 +6,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "users")
-public class User {
+public class UserEntity {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,16 +21,20 @@ public class User {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
+    @Column(name = "whatsapp_phone")
+    private String whatsappPhone;
+    
+    @Column(name = "slack_webhook")
+    private String slackWebhook;
+    
+    @Column(name = "discord_webhook")
+    private String discordWebhook;
+    
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    private List<Query> queries;
+    private List<QueryEntity> queries;
 
     // Constructors
-    public User() {}
-
-    public User(String email, String name) {
-        this.email = email;
-        this.name = name;
-    }
+    public UserEntity() {}
 
     // Getters and Setters
     public Long getId() { return id; }
@@ -45,6 +49,15 @@ public class User {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public List<Query> getQueries() { return queries; }
-    public void setQueries(List<Query> queries) { this.queries = queries; }
+    public String getWhatsappPhone() { return whatsappPhone; }
+    public void setWhatsappPhone(String whatsappPhone) { this.whatsappPhone = whatsappPhone; }
+
+    public String getSlackWebhook() { return slackWebhook; }
+    public void setSlackWebhook(String slackWebhook) { this.slackWebhook = slackWebhook; }
+
+    public String getDiscordWebhook() { return discordWebhook; }
+    public void setDiscordWebhook(String discordWebhook) { this.discordWebhook = discordWebhook; }
+
+    public List<QueryEntity> getQueries() { return queries; }
+    public void setQueries(List<QueryEntity> queries) { this.queries = queries; }
 }
