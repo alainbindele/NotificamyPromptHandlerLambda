@@ -36,15 +36,15 @@ quarkus:
 # Application configuration
 app:
   openai:
-    api-key: ${OPENAI_API_KEY:your-openai-api-key}
+    api-key: ${OPENAI_API_KEY}
     api-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
   
   aws:
     sqs:
       queue-url: ${AWS_SQS_QUEUE_URL:}
     ses:
-      from-email: ${AWS_SES_FROM_EMAIL:noreply@notifyme.com}
-      from-name: ${AWS_SES_FROM_NAME:Notificamy}
+      from-email: ${AWS_SES_FROM_EMAIL:service@notifyme.com}
+      from-name: ${AWS_SES_FROM_NAME:Notificamy service}
   
   # WhatsApp Configuration (using WhatsApp Business API)
   whatsapp:
