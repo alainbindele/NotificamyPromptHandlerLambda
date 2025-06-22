@@ -1,9 +1,11 @@
 package com.notificamy.infrastructure.adapter.ai;
 
 import com.notificamy.domain.port.AiServicePort;
+import com.notificamy.infrastructure.config.ApiKeysConfigService;
 import com.notificamy.infrastructure.external.dto.ChatGptResponse;
 import com.notificamy.infrastructure.external.dto.OpenAiRequest;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
@@ -17,8 +19,8 @@ public class ChatGptAdapter implements AiServicePort {
     
     private static final Logger LOG = Logger.getLogger(ChatGptAdapter.class);
     
-    @ConfigProperty(name = "app.openai.api-key")
-    String apiKey;
+    @Inject
+    ApiKeysConfigService apiKeysConfig;
     
     @ConfigProperty(name = "app.openai.api-url")
     String apiUrl;
@@ -32,6 +34,12 @@ public class ChatGptAdapter implements AiServicePort {
     @Override
     public String processPrompt(String prompt) {
         try {
+            String apiKey = apiKeysConfig.getOpenAiApiKey();
+            if (apiKey == null) {
+                LOG.error("OpenAI API key not found in secrets manager");
+                return "Sorry, the AI service is currently unavailable.";
+            }
+            
             String policy = buildPolicy();
             OpenAiRequest request = new OpenAiRequest(policy, prompt);
             

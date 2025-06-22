@@ -2,7 +2,9 @@ package com.notificamy.infrastructure.adapter.notification.strategy;
 
 import com.notificamy.domain.model.NotificationChannel;
 import com.notificamy.domain.model.NotificationRequest;
+import com.notificamy.infrastructure.config.ApiKeysConfigService;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
@@ -18,11 +20,11 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
     
     private static final Logger LOG = Logger.getLogger(WhatsAppNotificationStrategy.class);
     
+    @Inject
+    ApiKeysConfigService apiKeysConfig;
+    
     @ConfigProperty(name = "app.whatsapp.api-url")
     String whatsappApiUrl;
-    
-    @ConfigProperty(name = "app.whatsapp.api-token")
-    String whatsappApiToken;
     
     private final Client client;
     
@@ -38,6 +40,12 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
             return;
         }
         
+        String apiToken = apiKeysConfig.getWhatsAppApiToken();
+        if (apiToken == null) {
+            LOG.error("WhatsApp API token not found in secrets manager");
+            return;
+        }
+        
         try {
             String message = buildWhatsAppMessage(request);
             
@@ -50,7 +58,7 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
             
             Response response = client.target(whatsappApiUrl)
                     .request(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + whatsappApiToken)
+                    .header("Authorization", "Bearer " + apiToken)
                     .header("Content-Type", "application/json")
                     .post(Entity.json(payload));
             

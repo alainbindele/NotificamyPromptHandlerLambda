@@ -1,11 +1,12 @@
-# Database configuration
+# Database configuration - now using Secrets Manager
 quarkus:
   datasource:
     db-kind: mysql
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:password}
+    # These will be dynamically configured via DatabaseConfigService
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
     jdbc:
-      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:notifyme}
+      url: ${DB_URL:}
       max-size: 16
 
   hibernate-orm:
@@ -18,14 +19,14 @@ quarkus:
   sqs:
     endpoint-override: ${AWS_SQS_ENDPOINT:}
     aws:
-      region: ${AWS_REGION:us-east-1}
+      region: ${AWS_REGION:eu-south-1}
       credentials:
         type: default
 
   ses:
     endpoint-override: ${AWS_SES_ENDPOINT:}
     aws:
-      region: ${AWS_REGION:us-east-1}
+      region: ${AWS_REGION:eu-south-1}
       credentials:
         type: default
 
@@ -35,21 +36,26 @@ quarkus:
 
 # Application configuration
 app:
-  openai:
-    api-key: ${OPENAI_API_KEY}
-    api-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
-  
+  # AWS Configuration
   aws:
+    region: ${AWS_REGION:eu-south-1}
+    secrets:
+      database-secret-name: ${DATABASE_SECRET_NAME:notificamy/database-credentials}
+      api-keys-secret-name: ${API_KEYS_SECRET_NAME:notificamy/api-keys}
+    
     sqs:
       queue-url: ${AWS_SQS_QUEUE_URL:}
     ses:
-      from-email: ${AWS_SES_FROM_EMAIL:service@notifyme.com}
-      from-name: ${AWS_SES_FROM_NAME:Notificamy service}
+      from-email: ${AWS_SES_FROM_EMAIL:service@notificamy.com}
+      from-name: ${AWS_SES_FROM_NAME:Notificamy Service}
   
-  # WhatsApp Configuration (using WhatsApp Business API)
+  # OpenAI Configuration - now from Secrets Manager
+  openai:
+    api-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
+  
+  # WhatsApp Configuration - now from Secrets Manager
   whatsapp:
     api-url: ${WHATSAPP_API_URL:https://graph.facebook.com/v18.0/YOUR_PHONE_NUMBER_ID/messages}
-    api-token: ${WHATSAPP_API_TOKEN:your-whatsapp-api-token}
 
 # Logging
 quarkus:

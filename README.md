@@ -1,6 +1,14 @@
-# Notificamy Lambda Processor - Hexagonal Architecture
+# Notificamy Lambda Processor - Hexagonal Architecture with AWS Secrets Manager
 
 AWS Lambda function built with Quarkus using Hexagonal Architecture that processes notification requests from SQS, integrates with ChatGPT, and sends notifications via multiple channels (Email, WhatsApp, Slack, Discord).
+
+## 🔐 Security-First Architecture
+
+This project implements a **security-first approach** using:
+- **AWS Secrets Manager** for sensitive data (API keys, database credentials)
+- **GitHub Secrets** for deployment configuration
+- **IAM roles** with least-privilege access
+- **Encrypted secrets** at rest and in transit
 
 ## Architecture Overview
 
@@ -16,6 +24,10 @@ This project follows **Hexagonal Architecture** (Ports and Adapters) principles:
   - `NotificationAdapter` - Multi-channel notification orchestrator
   - `QueryRepositoryAdapter` - Database access
   - `ChatGptAdapter` - AI service integration
+- **Configuration Services**: Secure secret management
+  - `SecretsManagerService` - AWS Secrets Manager integration
+  - `DatabaseConfigService` - Database configuration from secrets
+  - `ApiKeysConfigService` - API keys from secrets
 - **Notification Strategies**: Channel-specific implementations
   - `EmailNotificationStrategy` - AWS SES
   - `WhatsAppNotificationStrategy` - WhatsApp Business API
@@ -47,6 +59,38 @@ Each notification channel is implemented as a separate strategy, allowing for:
 
 #### 3. Adapter Pattern
 External services (database, AI, notifications) are wrapped in adapters that implement domain ports.
+
+## 🔐 Secrets Management
+
+### AWS Secrets Manager
+Sensitive data is stored in AWS Secrets Manager:
+
+**Database Credentials** (`notificamy/database-credentials`):
+```json
+{
+  "DB_URL": "jdbc:mysql://your-rds-endpoint:3306/notificamy",
+  "DB_USER": "notificamy_user", 
+  "DB_PASSWORD": "your-secure-password"
+}
+```
+
+**API Keys** (`notificamy/api-keys`):
+```json
+{
+  "OPENAI_API_KEY": "sk-your-openai-api-key",
+  "WHATSAPP_API_TOKEN": "your-whatsapp-business-api-token"
+}
+```
+
+### GitHub Secrets
+Non-sensitive configuration stored in GitHub Secrets:
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+- `DATABASE_SECRET_NAME` / `API_KEYS_SECRET_NAME`
+- `AWS_SQS_QUEUE_URL`
+- `AWS_SES_FROM_EMAIL` / `AWS_SES_FROM_NAME`
+- `WHATSAPP_API_URL`
+
+See [SECRETS_SETUP.md](docs/SECRETS_SETUP.md) for detailed setup instructions.
 
 ## Notification Channels
 
@@ -84,28 +128,6 @@ ALTER TABLE queries
 ADD COLUMN enabled_channels JSON DEFAULT '["EMAIL"]';
 ```
 
-## Environment Variables
-
-### Core Configuration
-```bash
-export OPENAI_API_KEY=your-openai-api-key
-export AWS_REGION=us-east-1
-export AWS_SQS_QUEUE_URL=https://sqs.region.amazonaws.com/account/queue-name
-export AWS_SES_FROM_EMAIL=noreply@yourdomain.com
-export AWS_SES_FROM_NAME="Notificamy"
-export DB_HOST=localhost
-export DB_PORT=3306
-export DB_USERNAME=root
-export DB_PASSWORD=your-password
-export DB_NAME=notificamy
-```
-
-### WhatsApp Configuration
-```bash
-export WHATSAPP_API_URL=https://graph.facebook.com/v18.0/YOUR_PHONE_NUMBER_ID/messages
-export WHATSAPP_API_TOKEN=your-whatsapp-business-api-token
-```
-
 ## SQS Message Format
 
 ```json
@@ -129,13 +151,21 @@ mvn clean package
 mvn clean package -Pnative
 ```
 
+### Deployment via GitHub Actions
+The project includes a complete CI/CD pipeline that:
+1. Builds the application with Maven
+2. Creates and pushes Docker image to ECR
+3. Updates Lambda function configuration
+4. Deploys the new version
+
 ## Channel Setup Instructions
 
 ### WhatsApp Business API
 1. Create a Meta Business account
 2. Set up WhatsApp Business API
 3. Get your Phone Number ID and Access Token
-4. Configure webhook URLs for message status
+4. Store access token in AWS Secrets Manager
+5. Store API URL in GitHub Secrets
 
 ### Slack Integration
 1. Create a Slack App in your workspace
@@ -149,31 +179,26 @@ mvn clean package -Pnative
 3. Create a new webhook
 4. Copy webhook URL to user's `discord_webhook` field
 
-## Testing
+## Security Features
 
-Each notification strategy can be tested independently:
-
-```java
-@Test
-public void testEmailNotification() {
-    // Test email strategy
-}
-
-@Test
-public void testMultiChannelNotification() {
-    // Test decorator chain
-}
-```
+1. **No Hardcoded Secrets**: All sensitive data in AWS Secrets Manager
+2. **Least Privilege IAM**: Lambda role has minimal required permissions
+3. **Encrypted Storage**: Secrets encrypted at rest and in transit
+4. **Audit Logging**: All secret access logged via CloudTrail
+5. **Secret Rotation**: Support for automatic secret rotation
+6. **Caching**: Secrets cached during Lambda execution for performance
 
 ## Benefits of This Architecture
 
-1. **Testability**: Each component can be tested in isolation
-2. **Maintainability**: Clear separation of concerns
-3. **Extensibility**: Easy to add new notification channels
-4. **Flexibility**: Users can choose any combination of channels
-5. **Fault Tolerance**: Channel failures don't affect others
-6. **Performance**: Parallel notification sending possible
-7. **Clean Code**: Domain logic separated from infrastructure concerns
+1. **Security**: Secrets never exposed in code or logs
+2. **Testability**: Each component can be tested in isolation
+3. **Maintainability**: Clear separation of concerns
+4. **Extensibility**: Easy to add new notification channels
+5. **Flexibility**: Users can choose any combination of channels
+6. **Fault Tolerance**: Channel failures don't affect others
+7. **Performance**: Parallel notification sending possible
+8. **Clean Code**: Domain logic separated from infrastructure concerns
+9. **Secret Management**: Centralized, secure secret handling
 
 ## MapStruct Integration
 
