@@ -31,6 +31,122 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-south-1
 
+      # Create/verify IAM role for Lambda
+      - name: Create Lambda IAM role
+        run: |
+          echo "🔧 Creating/verifying Lambda IAM role..."
+          
+          ROLE_NAME="lambda-execution-role"
+          ACCOUNT_ID="435703062953"
+          REGION="eu-south-1"
+          
+          # Check if role exists
+          if aws iam get-role --role-name $ROLE_NAME >/dev/null 2>&1; then
+            echo "✅ Role $ROLE_NAME already exists"
+          else
+            echo "📦 Creating role $ROLE_NAME..."
+          
+            # Create trust policy
+            cat > trust-policy.json << EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+          EOF
+          
+            aws iam create-role \
+              --role-name $ROLE_NAME \
+              --assume-role-policy-document file://trust-policy.json \
+              --description "Execution role for Notificamy Lambda function"
+          fi
+          
+          # Attach basic execution role
+          aws iam attach-role-policy \
+            --role-name $ROLE_NAME \
+            --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+          
+          # Create custom policy
+          cat > notificamy-policy.json << EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "secretsmanager:GetSecretValue"
+                ],
+                "Resource": [
+                  "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:notificamy/database-credentials-*",
+                  "arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:notificamy/api-keys-*"
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "ses:SendEmail",
+                  "ses:SendRawEmail"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage",
+                  "sqs:GetQueueAttributes"
+                ],
+                "Resource": "arn:aws:sqs:${REGION}:${ACCOUNT_ID}:*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ],
+                "Resource": "arn:aws:logs:*:*:*"
+              }
+            ]
+          }
+          EOF
+          
+          # Create or update policy
+          POLICY_NAME="NotificamyLambdaPolicy"
+          POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/${POLICY_NAME}"
+          
+          if aws iam get-policy --policy-arn $POLICY_ARN >/dev/null 2>&1; then
+            echo "🔄 Updating existing policy..."
+            aws iam create-policy-version \
+              --policy-arn $POLICY_ARN \
+              --policy-document file://notificamy-policy.json \
+              --set-as-default
+          else
+            echo "📦 Creating new policy..."
+            aws iam create-policy \
+              --policy-name $POLICY_NAME \
+              --policy-document file://notificamy-policy.json \
+              --description "Policy for Notificamy Lambda function"
+          fi
+          
+          # Attach custom policy
+          aws iam attach-role-policy \
+            --role-name $ROLE_NAME \
+            --policy-arn $POLICY_ARN
+          
+          # Wait for role propagation
+          echo "⏳ Waiting for role propagation..."
+          sleep 15
+          
+          echo "✅ IAM role configured successfully!"
+
       # Build the application FIRST (outside Docker for better reliability)
       - name: Build with Maven
         env:
