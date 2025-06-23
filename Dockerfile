@@ -9,6 +9,7 @@ COPY pom.xml .
 COPY settings.xml .
 
 # Download dependencies (this layer will be cached if pom.xml doesn't change)
+)
 RUN mvn dependency:go-offline -q
 
 # Copy source code
