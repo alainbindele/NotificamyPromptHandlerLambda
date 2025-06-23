@@ -6,67 +6,48 @@
   <artifactId>lambda-processor</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <properties>
-    <compiler-plugin.version>3.11.0</compiler-plugin.version>
-    <maven.compiler.release>21</maven.compiler.release>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <skipITs>true</skipITs>
-    <surefire-plugin.version>3.0.0</surefire-plugin.version>
   </properties>
   
   <dependencies>
-    <!-- MINIMAL dependencies for AWS Lambda -->
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-lambda-java-events</artifactId>
-      <version>3.11.3</version>
-    </dependency>
-    
+    <!-- AWS Lambda Core -->
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-lambda-java-core</artifactId>
       <version>1.2.3</version>
     </dependency>
     
-    <!-- Jackson for JSON processing -->
+    <!-- AWS Lambda Events -->
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-lambda-java-events</artifactId>
+      <version>3.11.3</version>
+    </dependency>
+    
+    <!-- Jackson for JSON -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>2.15.2</version>
     </dependency>
-    
-    <!-- Testing -->
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>5.9.3</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
   
   <build>
     <plugins>
+      <!-- Compiler Plugin -->
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>${compiler-plugin.version}</version>
+        <version>3.11.0</version>
         <configuration>
-          <release>21</release>
           <source>21</source>
           <target>21</target>
-          <compilerArgs>
-            <arg>-parameters</arg>
-          </compilerArgs>
         </configuration>
       </plugin>
       
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${surefire-plugin.version}</version>
-      </plugin>
-      
-      <!-- Shade plugin to create uber JAR -->
+      <!-- Shade Plugin for Uber JAR -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
@@ -79,11 +60,7 @@
             </goals>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>com.notificamy.application.lambda.NotificamyLambdaHandler</mainClass>
-                </transformer>
-              </transformers>
+              <finalName>lambda-processor-1.0.0-SNAPSHOT</finalName>
             </configuration>
           </execution>
         </executions>
