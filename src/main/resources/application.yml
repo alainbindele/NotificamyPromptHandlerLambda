@@ -32,9 +32,9 @@ quarkus:
 
 # Application configuration
 app:
-  # AWS Configuration
+  # AWS Configuration - Using custom variable name to avoid reserved AWS_REGION
   aws:
-    region: ${AWS_REGION:eu-south-1}
+    region: ${NOTIFICAMY_AWS_REGION:${AWS_REGION:eu-south-1}}
     secrets:
       database-secret-name: ${DATABASE_SECRET_NAME:notificamy/database-credentials}
       api-keys-secret-name: ${API_KEYS_SECRET_NAME:notificamy/api-keys}

@@ -100,29 +100,43 @@ jobs:
               --timeout 300 \
               --memory-size 1024 \
               --region eu-south-1 \
-              --description "Notificamy notification processor with multi-channel support"
+              --description "Notificamy notification processor with multi-channel support" \
+              --environment "Variables={
+                DATABASE_SECRET_NAME='${{ secrets.DATABASE_SECRET_NAME }}',
+                API_KEYS_SECRET_NAME='${{ secrets.API_KEYS_SECRET_NAME }}',
+                NOTIFICAMY_AWS_REGION='eu-south-1',
+                AWS_SQS_QUEUE_URL='${{ secrets.AWS_SQS_QUEUE_URL }}',
+                AWS_SES_FROM_EMAIL='${{ secrets.AWS_SES_FROM_EMAIL }}',
+                AWS_SES_FROM_NAME='${{ secrets.AWS_SES_FROM_NAME }}',
+                WHATSAPP_API_URL='${{ secrets.WHATSAPP_API_URL }}',
+                OPENAI_API_URL='https://api.openai.com/v1/chat/completions'
+              }"
           fi
 
-      # Set Lambda environment variables
-      - name: Set Lambda environment variables
+      # Set Lambda environment variables (only if function already existed)
+      - name: Update Lambda environment variables
         run: |
-          aws lambda update-function-configuration \
-            --function-name NotificamyNotifierLambda \
-            --environment "Variables={
-              DATABASE_SECRET_NAME='${{ secrets.DATABASE_SECRET_NAME }}',
-              API_KEYS_SECRET_NAME='${{ secrets.API_KEYS_SECRET_NAME }}',
-              AWS_REGION='eu-south-1',
-              AWS_SQS_QUEUE_URL='${{ secrets.AWS_SQS_QUEUE_URL }}',
-              AWS_SES_FROM_EMAIL='${{ secrets.AWS_SES_FROM_EMAIL }}',
-              AWS_SES_FROM_NAME='${{ secrets.AWS_SES_FROM_NAME }}',
-              WHATSAPP_API_URL='${{ secrets.WHATSAPP_API_URL }}',
-              OPENAI_API_URL='https://api.openai.com/v1/chat/completions'
-            }" \
-            --region eu-south-1
+          if aws lambda get-function --function-name NotificamyNotifierLambda --region eu-south-1 >/dev/null 2>&1; then
+            echo "🔧 Updating environment variables..."
+            aws lambda update-function-configuration \
+              --function-name NotificamyNotifierLambda \
+              --environment "Variables={
+                DATABASE_SECRET_NAME='${{ secrets.DATABASE_SECRET_NAME }}',
+                API_KEYS_SECRET_NAME='${{ secrets.API_KEYS_SECRET_NAME }}',
+                NOTIFICAMY_AWS_REGION='eu-south-1',
+                AWS_SQS_QUEUE_URL='${{ secrets.AWS_SQS_QUEUE_URL }}',
+                AWS_SES_FROM_EMAIL='${{ secrets.AWS_SES_FROM_EMAIL }}',
+                AWS_SES_FROM_NAME='${{ secrets.AWS_SES_FROM_NAME }}',
+                WHATSAPP_API_URL='${{ secrets.WHATSAPP_API_URL }}',
+                OPENAI_API_URL='https://api.openai.com/v1/chat/completions'
+              }" \
+              --region eu-south-1
+          fi
 
       # Update Lambda function code
       - name: Update Lambda function
         run: |
+          echo "🚀 Updating Lambda function code..."
           aws lambda update-function-code \
             --function-name NotificamyNotifierLambda \
             --image-uri 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
@@ -140,6 +154,7 @@ jobs:
       # Verify deployment
       - name: Verify Lambda function update
         run: |
+          echo "✅ Deployment completed! Function details:"
           aws lambda get-function \
             --function-name NotificamyNotifierLambda \
             --region eu-south-1 \
