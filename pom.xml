@@ -13,7 +13,7 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.version>3.6.4</quarkus.platform.version>
-    <quarkus.aws.platform.version>2.16.12.Final</quarkus.aws.platform.version>
+    <quarkus.amazon.services.version>2.16.12.Final</quarkus.amazon.services.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
@@ -27,6 +27,13 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <dependency>
+        <groupId>io.quarkus.platform</groupId>
+        <artifactId>quarkus-amazon-services-bom</artifactId>
+        <version>${quarkus.amazon.services.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>
@@ -35,14 +42,12 @@
       <artifactId>quarkus-amazon-lambda</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.quarkus</groupId>
+      <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-sqs</artifactId>
-      <version>${quarkus.aws.platform.version}</version>
     </dependency>
     <dependency>
-      <groupId>io.quarkus</groupId>
+      <groupId>io.quarkiverse.amazonservices</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
-      <version>${quarkus.aws.platform.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
