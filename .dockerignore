@@ -1,5 +1,4 @@
 # Ignore everything except what we need for the build
-target/
 .git
 .gitignore
 *.md
