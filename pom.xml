@@ -18,11 +18,7 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>com.besafegroup</groupId>
-            <artifactId>common-lib</artifactId>
-            <version>${besafegroup.common-lib.version}</version>
-        </dependency>
+        
         <!-- Quarkus core -->
         <dependency>
             <groupId>io.quarkus</groupId>
