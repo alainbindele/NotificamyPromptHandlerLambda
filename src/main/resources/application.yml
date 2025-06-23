@@ -18,9 +18,9 @@ quarkus:
     bytecode-enhancement:
       enabled: false
 
-  # Lambda configuration - CRITICAL: Use Quarkus Lambda handler
+  # Lambda configuration - CRITICAL: Use the correct handler
   lambda:
-    handler: com.notificamy.application.lambda.NotificamyLambdaHandler
+    handler: notificamyLambdaHandler
 
   # Disable dev services for production builds
   devservices:

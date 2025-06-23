@@ -24,11 +24,14 @@ COPY src ./src
 # Build the application with uber-jar
 RUN mvn clean package -DskipTests -Dquarkus.package.type=uber-jar -q --settings settings.xml
 
-# Verify JAR was created and list its contents
+# Verify JAR was created and contains our handler class
 RUN ls -la target/ && \
     if [ -f target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ]; then \
         echo "✅ JAR file created successfully"; \
-        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -E "(NotificamyLambdaHandler|application)" | head -10; \
+        echo "📋 Checking for handler class..."; \
+        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -i "NotificamyLambdaHandler" || echo "⚠️ Handler class not found in JAR"; \
+        echo "📋 Checking Quarkus Lambda classes..."; \
+        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -i "QuarkusStreamHandler" || echo "⚠️ QuarkusStreamHandler not found"; \
     else \
         echo "❌ JAR file not found"; \
         exit 1; \
@@ -40,5 +43,5 @@ FROM public.ecr.aws/lambda/java:21
 # Copy the uber JAR from build stage
 COPY --from=build /build/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
 
-# Set the Lambda handler - Use Quarkus Lambda handler
+# Set the Lambda handler - Use Quarkus Lambda runtime handler
 CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
