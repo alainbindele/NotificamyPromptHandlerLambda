@@ -1,6 +1,6 @@
 target/
 !target/lambda-processor-1.0.0-SNAPSHOT-runner.jar
-!target/lib/
+!target/dependency/
 .git
 .gitignore
 README.md
