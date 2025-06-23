@@ -1,11 +1,5 @@
-# Multi-stage build for Quarkus Lambda
-FROM eclipse-temurin:17-jdk AS build
-
-# Install Maven
-RUN apt-get update && \
-    apt-get install -y maven && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Multi-stage build for Quarkus Lambda with Lambda-specific optimizations
+FROM maven:3.9.5-eclipse-temurin-17 AS build
 
 # Set working directory
 WORKDIR /app
@@ -15,22 +9,29 @@ COPY pom.xml .
 COPY settings.xml .
 
 # Download dependencies (this layer will be cached if pom.xml doesn't change)
+)
 RUN mvn dependency:go-offline -q
 
 # Copy source code
 COPY src ./src
 
-# Build the application and copy dependencies (skip tests for Docker build)
-RUN mvn clean package dependency:copy-dependencies -DincludeScope=runtime -DskipTests -q
+# Build the application with Lambda-specific settings
+RUN mvn clean package dependency:copy-dependencies \
+    -DincludeScope=runtime \
+    -DskipTests \
+    -Dquarkus.package.type=uber-jar \
+    -q
 
-# Runtime stage
+# Runtime stage - Use AWS Lambda Java 17 base image
 FROM public.ecr.aws/lambda/java:17
 
-# Copy the Quarkus runner JAR
-COPY --from=build /app/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
+# Copy the Quarkus uber JAR (contains all dependencies)
+COPY --from=build /app/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/lib/
 
-# Copy all dependencies
-COPY --from=build /app/target/dependency/* ${LAMBDA_TASK_ROOT}/lib/
-
-# Set the Lambda handler
+# Set the Lambda handler - Quarkus Lambda handler
 CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
+
+# Add labels for better image management
+LABEL maintainer="Notificamy Team"
+LABEL version="1.0.0"
+LABEL description="Notificamy Lambda Processor with Quarkus"
