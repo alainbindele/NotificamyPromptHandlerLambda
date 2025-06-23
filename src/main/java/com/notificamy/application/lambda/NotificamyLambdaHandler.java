@@ -17,7 +17,7 @@ import org.jboss.logging.Logger;
 
 import java.util.Set;
 
-@Named("notificamyLambda")
+@Named("notificamyLambdaHandler")
 public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
     
     private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
@@ -35,32 +35,34 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
     
     @Override
     public String handleRequest(SQSEvent event, Context context) {
-        LOG.infof("Processing SQS event with %d records", event.getRecords().size());
+        LOG.infof("🚀 Lambda handler started - Processing SQS event with %d records", event.getRecords().size());
         
         int processedCount = 0;
         int errorCount = 0;
         
         for (SQSEvent.SQSMessage sqsMessage : event.getRecords()) {
             try {
+                LOG.infof("📨 Processing message: %s", sqsMessage.getBody());
                 processMessage(sqsMessage);
                 processedCount++;
+                LOG.infof("✅ Message processed successfully");
             } catch (Exception e) {
-                LOG.errorf(e, "Error processing SQS message: %s", sqsMessage.getBody());
+                LOG.errorf(e, "❌ Error processing SQS message: %s", sqsMessage.getBody());
                 errorCount++;
             }
         }
         
-        String result = String.format("Processed: %d, Errors: %d", processedCount, errorCount);
-        LOG.infof("Lambda execution completed: %s", result);
+        String result = String.format("✅ Lambda execution completed - Processed: %d, Errors: %d", processedCount, errorCount);
+        LOG.infof(result);
         return result;
     }
     
     private void processMessage(SQSEvent.SQSMessage sqsMessage) throws Exception {
-        LOG.infof("Processing message: %s", sqsMessage.getBody());
+        LOG.infof("🔍 Parsing SQS message body...");
         
         // Parse SQS message
         SqsMessage message = objectMapper.readValue(sqsMessage.getBody(), SqsMessage.class);
-        LOG.infof("Parsed message for query ID: %d", message.getQueryId());
+        LOG.infof("📋 Parsed message for query ID: %d", message.getQueryId());
         
         // Extract data using mapper
         Long queryId = sqsMessageMapper.extractQueryId(message);
@@ -73,11 +75,12 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
             throw new RuntimeException("No notification channels available for query ID: " + queryId);
         }
         
-        LOG.infof("User: %s, Enabled channels: %s", user.getEmail(), enabledChannels);
+        LOG.infof("👤 User: %s, 📢 Enabled channels: %s", user.getEmail(), enabledChannels);
         
         // Process with AI
+        LOG.infof("🤖 Processing prompt with AI service...");
         String aiResponse = aiService.processPrompt(prompt);
-        LOG.infof("AI response generated for query ID: %d", queryId);
+        LOG.infof("✅ AI response generated for query ID: %d", queryId);
         
         // Create notification request
         NotificationRequest notificationRequest = new NotificationRequest(
@@ -85,9 +88,10 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
         );
         
         // Send notifications through all enabled channels using Decorator pattern
+        LOG.infof("📤 Sending notifications through %d channels...", enabledChannels.size());
         notificationPort.sendNotification(notificationRequest);
         
-        LOG.infof("Notification request processed successfully for query ID: %d through %d channels", 
+        LOG.infof("🎉 Notification request processed successfully for query ID: %d through %d channels", 
                 queryId, enabledChannels.size());
     }
 }

@@ -1,4 +1,4 @@
-# Multi-stage build for better compatibility and smaller final image
+# Multi-stage build for better Lambda compatibility
 FROM maven:3.9.5-eclipse-temurin-21 AS build
 
 # Set working directory
@@ -21,38 +21,24 @@ RUN mvn dependency:go-offline -q --settings settings.xml
 # Copy source code
 COPY src ./src
 
-# Build the application
+# Build the application with uber-jar
 RUN mvn clean package -DskipTests -Dquarkus.package.type=uber-jar -q --settings settings.xml
 
-# Runtime stage - Use Amazon Linux 2 with Java 21
-FROM amazonlinux:2
+# Verify JAR was created and list its contents
+RUN ls -la target/ && \
+    if [ -f target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ]; then \
+        echo "✅ JAR file created successfully"; \
+        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -E "(NotificamyLambdaHandler|application)" | head -10; \
+    else \
+        echo "❌ JAR file not found"; \
+        exit 1; \
+    fi
 
-# Install Java 21 and required packages
-RUN yum update -y && \
-    yum install -y java-21-amazon-corretto && \
-    yum clean all
-
-# Create Lambda runtime interface client directory
-RUN mkdir -p /opt/extensions
-
-# Set Lambda environment variables
-ENV LAMBDA_TASK_ROOT=/var/task
-ENV LAMBDA_RUNTIME_DIR=/var/runtime
-
-# Create task directory
-RUN mkdir -p ${LAMBDA_TASK_ROOT}
+# Runtime stage - Use official AWS Lambda Java 21 base image
+FROM public.ecr.aws/lambda/java:21
 
 # Copy the uber JAR from build stage
 COPY --from=build /build/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
 
-# Set working directory
-WORKDIR ${LAMBDA_TASK_ROOT}
-
-# Create a simple bootstrap script for Lambda
-RUN echo '#!/bin/bash' > /var/task/bootstrap && \
-    echo 'cd /var/task' >> /var/task/bootstrap && \
-    echo 'java -jar lambda-processor-1.0.0-SNAPSHOT-runner.jar' >> /var/task/bootstrap && \
-    chmod +x /var/task/bootstrap
-
-# Set the Lambda handler
-CMD ["com.notificamy.application.lambda.NotificamyLambdaHandler::handleRequest"]
+# Set the Lambda handler - Use Quarkus Lambda handler
+CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
