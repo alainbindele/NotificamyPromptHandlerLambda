@@ -1,13 +1,11 @@
+# Ignore everything except what we need for the build
 target/
-!target/lambda-processor-1.0.0-SNAPSHOT-runner.jar
-!target/dependency/
 .git
 .gitignore
-README.md
-docs/
-src/
-pom.xml
 *.md
 .mvn/
 mvnw
 mvnw.cmd
+.idea/
+*.iml
+.vscode/

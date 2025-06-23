@@ -1,8 +1,30 @@
+# Multi-stage build for Quarkus Lambda
+FROM maven:3.9.6-openjdk-17 AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy Maven files first for better caching
+COPY pom.xml .
+COPY settings.xml .
+
+# Download dependencies (this layer will be cached if pom.xml doesn't change)
+RUN mvn dependency:go-offline -q
+
+# Copy source code
+COPY src ./src
+
+# Build the application and copy dependencies
+RUN mvn clean package dependency:copy-dependencies -DincludeScope=runtime -q
+
+# Runtime stage
 FROM public.ecr.aws/lambda/java:17
 
-# Copy the Quarkus Lambda runner JAR and dependencies
-COPY target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
-COPY target/dependency/* ${LAMBDA_TASK_ROOT}/lib/
+# Copy the Quarkus runner JAR
+COPY --from=build /app/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
+
+# Copy all dependencies
+COPY --from=build /app/target/dependency/* ${LAMBDA_TASK_ROOT}/lib/
 
 # Set the Lambda handler
 CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
