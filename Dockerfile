@@ -1,26 +1,25 @@
-# Multi-stage build for AWS Lambda compatibility
-FROM maven:3.9.5-eclipse-temurin-21 AS build
+# Use official AWS Lambda Java 21 base image directly
+FROM public.ecr.aws/lambda/java:21
 
 # Set working directory
-WORKDIR /build
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Install Maven for building
+RUN yum update -y && \
+    yum install -y maven git && \
+    yum clean all
 
 # Copy Maven configuration
 COPY pom.xml settings.xml ./
 
-# Download dependencies first (better caching)
-RUN mvn dependency:go-offline -q
-
 # Copy source code
 COPY src ./src
 
-# Build the application with uber-jar for Lambda
+# Build the application directly in the Lambda container
 RUN mvn clean package -DskipTests -Dquarkus.package.type=uber-jar -q
 
-# Runtime stage - Use official AWS Lambda Java 21 base image
-FROM public.ecr.aws/lambda/java:21
-
-# Copy the uber JAR from build stage
-COPY --from=build /build/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
+# Copy the built JAR to the Lambda task root
+RUN cp target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
 
 # Set the Lambda handler
 CMD ["com.notificamy.application.lambda.NotificamyLambdaHandler::handleRequest"]
