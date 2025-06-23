@@ -13,6 +13,7 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.version>3.6.4</quarkus.platform.version>
+    <quarkus.aws.platform.version>2.16.12.Final</quarkus.aws.platform.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
@@ -36,10 +37,12 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-amazon-sqs</artifactId>
+      <version>${quarkus.aws.platform.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-amazon-ses</artifactId>
+      <version>${quarkus.aws.platform.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -78,6 +81,7 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>secretsmanager</artifactId>
+      <version>2.25.10</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
