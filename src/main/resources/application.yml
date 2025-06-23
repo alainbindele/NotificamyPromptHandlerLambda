@@ -18,9 +18,9 @@ quarkus:
     bytecode-enhancement:
       enabled: false
 
-  # Lambda configuration - CRITICAL: Use QuarkusStreamHandler
+  # Lambda configuration - CRITICAL: Use QuarkusStreamHandler with CDI handler name
   lambda:
-    handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler
+    handler: lambdaHandler
 
   # Disable dev services for production builds
   devservices:
