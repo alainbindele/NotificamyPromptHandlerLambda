@@ -11,14 +11,12 @@ import com.notificamy.domain.port.AiServicePort;
 import com.notificamy.domain.port.NotificationPort;
 import com.notificamy.infrastructure.external.dto.SqsMessage;
 import com.notificamy.infrastructure.mapper.SqsMessageMapper;
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.jboss.logging.Logger;
 
 import java.util.Set;
 
-@ApplicationScoped
 @Named("lambdaHandler")
 public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
     

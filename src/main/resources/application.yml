@@ -18,7 +18,7 @@ quarkus:
     bytecode-enhancement:
       enabled: false
 
-  # Lambda configuration - CRITICAL: Use Quarkus native handler
+  # Lambda configuration - CRITICAL: Use QuarkusStreamHandler
   lambda:
     handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler
 

@@ -46,5 +46,5 @@ FROM public.ecr.aws/lambda/java:21
 # Copy the uber JAR from build stage
 COPY --from=build /build/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
 
-# Set the Lambda handler - Use Quarkus Lambda runtime handler
+# CRITICAL: Use QuarkusStreamHandler - this is the correct approach for Quarkus Lambda
 CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
