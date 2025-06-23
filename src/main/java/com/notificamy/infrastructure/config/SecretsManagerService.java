@@ -3,6 +3,7 @@ package com.notificamy.infrastructure.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -17,15 +18,16 @@ public class SecretsManagerService {
     
     private static final Logger LOG = Logger.getLogger(SecretsManagerService.class);
     
+    @Inject
+    SecretsManagerClient secretsClient;
+    
     @ConfigProperty(name = "app.aws.region")
     String awsRegion;
     
-    private final SecretsManagerClient secretsClient;
     private final ObjectMapper objectMapper;
     private final Map<String, JsonNode> secretsCache;
     
     public SecretsManagerService() {
-        this.secretsClient = SecretsManagerClient.builder().build();
         this.objectMapper = new ObjectMapper();
         this.secretsCache = new HashMap<>();
     }

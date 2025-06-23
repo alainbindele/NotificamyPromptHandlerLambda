@@ -13,8 +13,6 @@
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.version>3.6.4</quarkus.platform.version>
-    <quarkus.amazon.services.version>2.16.12.Final</quarkus.amazon.services.version>
-    <aws.sdk.version>2.25.10</aws.sdk.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
@@ -28,35 +26,16 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <dependency>
-        <groupId>io.quarkus.platform</groupId>
-        <artifactId>quarkus-amazon-services-bom</artifactId>
-        <version>${quarkus.amazon.services.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>software.amazon.awssdk</groupId>
-        <artifactId>bom</artifactId>
-        <version>${aws.sdk.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
     </dependencies>
   </dependencyManagement>
   <dependencies>
+    <!-- Quarkus Lambda -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-amazon-lambda</artifactId>
     </dependency>
-    <dependency>
-      <groupId>io.quarkiverse.amazonservices</groupId>
-      <artifactId>quarkus-amazon-sqs</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.quarkiverse.amazonservices</groupId>
-      <artifactId>quarkus-amazon-ses</artifactId>
-    </dependency>
+    
+    <!-- Database -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-hibernate-orm</artifactId>
@@ -69,6 +48,8 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jdbc-mysql</artifactId>
     </dependency>
+    
+    <!-- REST Client -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest-client-reactive-jackson</artifactId>
@@ -77,6 +58,8 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-resteasy-reactive-jackson</artifactId>
     </dependency>
+    
+    <!-- Core -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
@@ -85,33 +68,35 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-config-yaml</artifactId>
     </dependency>
+    
+    <!-- AWS Lambda Events -->
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-lambda-java-events</artifactId>
       <version>3.11.3</version>
     </dependency>
-    <!-- AWS SDK Dependencies -->
+    
+    <!-- AWS SDK v2 -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>secretsmanager</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
-      <artifactId>aws-core</artifactId>
+      <artifactId>ses</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
-      <artifactId>regions</artifactId>
+      <artifactId>sqs</artifactId>
     </dependency>
-    <dependency>
-      <groupId>software.amazon.awssdk</groupId>
-      <artifactId>auth</artifactId>
-    </dependency>
+    
+    <!-- Testing -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5</artifactId>
       <scope>test</scope>
     </dependency>
+    
     <!-- MapStruct -->
     <dependency>
       <groupId>org.mapstruct</groupId>

@@ -15,21 +15,6 @@ quarkus:
     log:
       sql: ${QUARKUS_LOG_SQL:false}
 
-  # AWS Configuration
-  sqs:
-    endpoint-override: ${AWS_SQS_ENDPOINT:}
-    aws:
-      region: ${AWS_REGION:eu-south-1}
-      credentials:
-        type: default
-
-  ses:
-    endpoint-override: ${AWS_SES_ENDPOINT:}
-    aws:
-      region: ${AWS_REGION:eu-south-1}
-      credentials:
-        type: default
-
   # Lambda configuration
   lambda:
     handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler
