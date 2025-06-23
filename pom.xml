@@ -25,16 +25,10 @@
       <artifactId>aws-lambda-java-events</artifactId>
       <version>3.11.3</version>
     </dependency>
-    
-    <!-- Jackson for JSON -->
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>2.15.2</version>
-    </dependency>
   </dependencies>
   
   <build>
+    <finalName>lambda-processor</finalName>
     <plugins>
       <!-- Compiler Plugin -->
       <plugin>
@@ -60,7 +54,11 @@
             </goals>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
-              <finalName>lambda-processor-1.0.0-SNAPSHOT</finalName>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>com.notificamy.application.lambda.NotificamyLambdaHandler</mainClass>
+                </transformer>
+              </transformers>
             </configuration>
           </execution>
         </executions>
