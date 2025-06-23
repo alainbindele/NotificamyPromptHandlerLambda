@@ -22,10 +22,10 @@ echo "🔧 Creazione Lambda function..."
 aws lambda create-function \
   --function-name NotificamyNotifierLambda \
   --package-type Image \
-  --code ImageUri=435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest \
+  --code ImageUri=435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
   --role arn:aws:iam::435703062953:role/lambda-execution-role \
   --architectures x86_64 \
-  --timeout 60 \
+  --timeout 300 \
   --memory-size 1024 \
   --region eu-south-1 \
   --description "Notificamy notification processor with multi-channel support"
@@ -52,7 +52,7 @@ if [ $? -eq 0 ]; then
   aws lambda get-function \
     --function-name NotificamyNotifierLambda \
     --region eu-south-1 \
-    --query 'Configuration.[FunctionName,State,LastUpdateStatus,PackageType,Architectures,Runtime]' \
+    --query 'Configuration.[FunctionName,State,LastUpdateStatus,PackageType,Architectures,Handler,Runtime]' \
     --output table
     
 else
