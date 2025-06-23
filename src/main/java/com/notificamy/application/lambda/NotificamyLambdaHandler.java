@@ -19,7 +19,7 @@ import org.jboss.logging.Logger;
 import java.util.Set;
 
 @ApplicationScoped
-@Named("notificamyLambdaHandler")
+@Named("lambdaHandler")
 public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
     
     private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
