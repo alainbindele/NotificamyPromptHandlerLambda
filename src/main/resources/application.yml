@@ -19,6 +19,10 @@ quarkus:
   lambda:
     handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler
 
+  # Disable dev services for production builds
+  devservices:
+    enabled: false
+
 # Application configuration
 app:
   # AWS Configuration

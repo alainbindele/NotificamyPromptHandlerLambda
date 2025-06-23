@@ -20,8 +20,8 @@ RUN mvn dependency:go-offline -q
 # Copy source code
 COPY src ./src
 
-# Build the application and copy dependencies
-RUN mvn clean package dependency:copy-dependencies -DincludeScope=runtime -q
+# Build the application and copy dependencies (skip tests for Docker build)
+RUN mvn clean package dependency:copy-dependencies -DincludeScope=runtime -DskipTests -q
 
 # Runtime stage
 FROM public.ecr.aws/lambda/java:17
