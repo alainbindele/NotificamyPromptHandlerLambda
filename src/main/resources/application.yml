@@ -14,6 +14,9 @@ quarkus:
       generation: none
     log:
       sql: ${QUARKUS_LOG_SQL:false}
+    # Disable bytecode enhancement to avoid Byte Buddy issues
+    bytecode-enhancement:
+      enabled: false
 
   # Lambda configuration
   lambda:
