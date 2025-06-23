@@ -1,0 +1,13 @@
+target/
+!target/lambda-processor-1.0.0-SNAPSHOT-runner.jar
+!target/lib/
+.git
+.gitignore
+README.md
+docs/
+src/
+pom.xml
+*.md
+.mvn/
+mvnw
+mvnw.cmd

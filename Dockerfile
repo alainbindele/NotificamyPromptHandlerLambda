@@ -1,7 +1,10 @@
-
 FROM public.ecr.aws/lambda/java:17
 
-ADD target/NotificamyNotifierLambda-1.0-SNAPSHOT-runner.jar /var/task/lib/NotificamyNotifierLambda-1.0-SNAPSHOT-runner.jar
-ADD target/lib/  /var/task/lib/
+# Copy the Quarkus Lambda runner JAR
+COPY target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/lib/
 
+# Copy all dependencies
+COPY target/lib/ ${LAMBDA_TASK_ROOT}/lib/
+
+# Set the Lambda handler
 CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
