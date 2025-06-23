@@ -17,6 +17,7 @@
     <quarkus.platform.version>3.6.4</quarkus.platform.version>
     <aws.sdk.version>2.21.29</aws.sdk.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
+    <lombok.version>1.18.30</lombok.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
   </properties>
@@ -107,6 +108,14 @@
       <scope>test</scope>
     </dependency>
     
+    <!-- Lombok -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>${lombok.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    
     <!-- MapStruct -->
     <dependency>
       <groupId>org.mapstruct</groupId>
@@ -153,6 +162,11 @@
             <arg>-parameters</arg>
           </compilerArgs>
           <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
             <path>
               <groupId>org.mapstruct</groupId>
               <artifactId>mapstruct-processor</artifactId>
