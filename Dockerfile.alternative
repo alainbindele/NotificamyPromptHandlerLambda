@@ -1,11 +1,5 @@
-# Multi-stage build for Quarkus Lambda
-FROM eclipse-temurin:17-jdk AS build
-
-# Install Maven
-RUN apt-get update && \
-    apt-get install -y maven && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Multi-stage build for Quarkus Lambda - Alternative version
+FROM maven:3.9.5-eclipse-temurin-17 AS build
 
 # Set working directory
 WORKDIR /app
