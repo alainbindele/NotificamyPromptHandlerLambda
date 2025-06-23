@@ -32,6 +32,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-south-1
 
+      # Create ECR repository if it doesn't exist
+      - name: Create ECR repository
+        run: |
+          aws ecr describe-repositories --repository-names notificamy --region eu-south-1 || \
+          aws ecr create-repository --repository-name notificamy --region eu-south-1
+
       # Build the application FIRST
       - name: Build with Maven
         env:
@@ -42,15 +48,25 @@ jobs:
             -DskipTests \
             -Dquarkus.package.type=uber-jar
 
+      # Verify JAR exists
+      - name: Verify JAR file
+        run: |
+          if [ ! -f target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ]; then
+            echo "❌ JAR file not found!"
+            exit 1
+          fi
+          echo "✅ JAR file found: $(ls -lh target/lambda-processor-1.0.0-SNAPSHOT-runner.jar)"
+
       # Login to ECR
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region eu-south-1 | docker login --username AWS --password-stdin 435703062953.dkr.ecr.eu-south-1.amazonaws.com
 
-      # Build Docker image with correct platform and buildx
+      # Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      # Build and push Docker image with explicit platform
       - name: Build and push Docker image
         run: |
           docker buildx build \
@@ -58,6 +74,34 @@ jobs:
             --push \
             --tag 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
             .
+
+      # Verify image was pushed successfully
+      - name: Verify ECR image
+        run: |
+          aws ecr describe-images \
+            --repository-name notificamy \
+            --region eu-south-1 \
+            --query 'imageDetails[0].[imageTags[0],imagePushedAt,imageSizeInBytes]' \
+            --output table
+
+      # Check if Lambda function exists, create if not
+      - name: Check and create Lambda function
+        run: |
+          if aws lambda get-function --function-name NotificamyNotifierLambda --region eu-south-1 >/dev/null 2>&1; then
+            echo "✅ Lambda function exists, will update"
+          else
+            echo "📦 Creating Lambda function..."
+            aws lambda create-function \
+              --function-name NotificamyNotifierLambda \
+              --package-type Image \
+              --code ImageUri=435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
+              --role arn:aws:iam::435703062953:role/lambda-execution-role \
+              --architectures x86_64 \
+              --timeout 300 \
+              --memory-size 1024 \
+              --region eu-south-1 \
+              --description "Notificamy notification processor with multi-channel support"
+          fi
 
       # Set Lambda environment variables
       - name: Set Lambda environment variables
@@ -73,20 +117,31 @@ jobs:
               AWS_SES_FROM_NAME='${{ secrets.AWS_SES_FROM_NAME }}',
               WHATSAPP_API_URL='${{ secrets.WHATSAPP_API_URL }}',
               OPENAI_API_URL='https://api.openai.com/v1/chat/completions'
-            }" || echo "Lambda function might not exist yet, continuing..."
+            }" \
+            --region eu-south-1
 
-      # Update Lambda function with explicit architecture
+      # Update Lambda function code
       - name: Update Lambda function
         run: |
           aws lambda update-function-code \
             --function-name NotificamyNotifierLambda \
             --image-uri 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
-            --architectures x86_64
+            --architectures x86_64 \
+            --region eu-south-1
+
+      # Wait for function to be updated
+      - name: Wait for Lambda update
+        run: |
+          echo "⏳ Waiting for Lambda function to be updated..."
+          aws lambda wait function-updated \
+            --function-name NotificamyNotifierLambda \
+            --region eu-south-1
 
       # Verify deployment
       - name: Verify Lambda function update
         run: |
           aws lambda get-function \
             --function-name NotificamyNotifierLambda \
-            --query 'Configuration.[FunctionName,State,LastUpdateStatus,PackageType,Architectures]' \
+            --region eu-south-1 \
+            --query 'Configuration.[FunctionName,State,LastUpdateStatus,PackageType,Architectures,CodeSha256]' \
             --output table
