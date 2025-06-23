@@ -1,12 +1,13 @@
-# Notificamy Lambda - Minimal
+# Notificamy Lambda - Hybrid Handler
 
 ## 🎯 Cosa Fa
 
-Riceve messaggi SQS e li processa usando **RequestHandler**.
+Riceve messaggi SQS e li processa usando **RequestHandler + QuarkusStreamHandler**.
 
-## ✨ Implementazione
+## ✨ Implementazione Ibrida
 
-- ✅ **RequestHandler<SQSEvent, String>** 
+- ✅ **Estende QuarkusStreamHandler** (per Quarkus CDI)
+- ✅ **Implementa RequestHandler<SQSEvent, String>** (per AWS Lambda)
 - ✅ **Logging** con Quarkus
 - ✅ **Echo dei messaggi** SQS
 - ✅ **Uber JAR** ottimizzato
@@ -20,21 +21,22 @@ Riceve messaggi SQS e li processa usando **RequestHandler**.
 
 ```
 src/main/java/com/notificamy/application/lambda/
-└── NotificamyLambdaHandler.java  ← Implementa RequestHandler
+└── NotificamyLambdaHandler.java  ← Hybrid: extends + implements
 ```
 
 ## 🔧 Handler Configuration
 
 ```java
 @Named("notificamyLambda")
-public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
+public class NotificamyLambdaHandler extends QuarkusStreamHandler 
+                                    implements RequestHandler<SQSEvent, String>
 ```
 
-## ✅ Risolto
+## ✅ Vantaggi Approccio Ibrido
 
-- ❌ ClassNotFoundException 
-- ✅ RequestHandler implementation
-- ✅ Quarkus logging
-- ✅ Uber JAR ottimizzato
+- ✅ **QuarkusStreamHandler**: CDI injection, Quarkus features
+- ✅ **RequestHandler**: Standard AWS Lambda interface
+- ✅ **Compatibilità massima** con entrambi gli ecosistemi
+- ✅ **Logging Quarkus** funzionante
 
-**MINIMALE E FUNZIONALE!** 🎉
+**IBRIDO E POTENTE!** 🎉

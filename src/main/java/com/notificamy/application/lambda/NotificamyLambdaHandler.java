@@ -3,25 +3,26 @@ package com.notificamy.application.lambda;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler;
 import jakarta.inject.Named;
 import org.jboss.logging.Logger;
 
 /**
- * Lambda handler che implementa RequestHandler
- * Minimale e funzionale per AWS Lambda
+ * Lambda handler che implementa RequestHandler ED estende QuarkusStreamHandler
+ * Combina il meglio di entrambi gli approcci
  */
 @Named("notificamyLambda")
-public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
+public class NotificamyLambdaHandler extends QuarkusStreamHandler implements RequestHandler<SQSEvent, String> {
     
     private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
     
     public NotificamyLambdaHandler() {
-        LOG.info("🚀 NotificamyLambdaHandler constructor called - Lambda ready!");
+        LOG.info("🚀 NotificamyLambdaHandler constructor - Hybrid approach ready!");
     }
     
     @Override
     public String handleRequest(SQSEvent event, Context context) {
-        LOG.info("🚀 handleRequest called - Lambda is working!");
+        LOG.info("🚀 handleRequest called - Hybrid Lambda is working!");
         
         if (event == null) {
             LOG.warn("⚠️ Event is null");
