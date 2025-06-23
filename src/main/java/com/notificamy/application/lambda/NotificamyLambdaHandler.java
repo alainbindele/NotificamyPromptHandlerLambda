@@ -13,13 +13,18 @@ import com.notificamy.infrastructure.external.dto.SqsMessage;
 import com.notificamy.infrastructure.mapper.SqsMessageMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.jboss.logging.Logger;
 
 import java.util.Set;
 
+/**
+ * AWS Lambda handler for processing Notificamy notification requests.
+ * 
+ * CRITICAL: This class MUST be directly accessible by AWS Lambda runtime.
+ * The class is configured as @ApplicationScoped for CDI but can also be
+ * invoked directly by Lambda without CDI if needed.
+ */
 @ApplicationScoped
-@Named("lambdaHandler")
 public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
     
     private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
@@ -35,9 +40,24 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
+    /**
+     * Default constructor required by AWS Lambda runtime
+     */
+    public NotificamyLambdaHandler() {
+        LOG.info("🚀 NotificamyLambdaHandler instantiated");
+    }
+    
     @Override
     public String handleRequest(SQSEvent event, Context context) {
-        LOG.infof("🚀 Lambda handler started - Processing SQS event with %d records", event.getRecords().size());
+        LOG.infof("🚀 Lambda handler started - Processing SQS event with %d records", 
+                event != null ? event.getRecords().size() : 0);
+        
+        // Handle null event gracefully
+        if (event == null || event.getRecords() == null) {
+            String result = "⚠️ No SQS records to process";
+            LOG.warn(result);
+            return result;
+        }
         
         int processedCount = 0;
         int errorCount = 0;
@@ -54,7 +74,8 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
             }
         }
         
-        String result = String.format("✅ Lambda execution completed - Processed: %d, Errors: %d", processedCount, errorCount);
+        String result = String.format("✅ Lambda execution completed - Processed: %d, Errors: %d", 
+                processedCount, errorCount);
         LOG.infof(result);
         return result;
     }

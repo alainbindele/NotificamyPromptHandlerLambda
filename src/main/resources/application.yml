@@ -18,9 +18,8 @@ quarkus:
     bytecode-enhancement:
       enabled: false
 
-  # Lambda configuration - CRITICAL: Use QuarkusStreamHandler with CDI handler name
-  lambda:
-    handler: lambdaHandler
+  # CRITICAL: Remove lambda handler configuration to use direct class reference
+  # This allows AWS Lambda to find the handler class directly
 
   # Disable dev services for production builds
   devservices:
