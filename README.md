@@ -1,36 +1,40 @@
-# Notificamy Lambda - ULTRA MINIMAL
-
-**PROBLEMA RISOLTO**: ClassNotFoundException
+# Notificamy Lambda - Minimal
 
 ## 🎯 Cosa Fa
 
-Riceve messaggi SQS e li processa. **BASTA.**
+Riceve messaggi SQS e li processa usando **RequestHandler**.
+
+## ✨ Implementazione
+
+- ✅ **RequestHandler<SQSEvent, String>** 
+- ✅ **Logging** con Quarkus
+- ✅ **Echo dei messaggi** SQS
+- ✅ **Uber JAR** ottimizzato
 
 ## 🚀 Deploy
 
 1. **Push su GitHub** → Deploy automatico
-2. **Test**: `chmod +x test-lambda.sh && ./test-lambda.sh`
+2. **Test**: Invia messaggio SQS
 
 ## 📦 Struttura
 
 ```
 src/main/java/com/notificamy/application/lambda/
-└── NotificamyLambdaHandler.java  ← SOLO QUESTO FILE
+└── NotificamyLambdaHandler.java  ← Implementa RequestHandler
 ```
 
-## 🔧 Secrets GitHub
+## 🔧 Handler Configuration
 
-```
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
+```java
+@Named("notificamyLambda")
+public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
 ```
 
 ## ✅ Risolto
 
 - ❌ ClassNotFoundException 
-- ✅ JAR corretto con Shade plugin
-- ✅ Handler minimale senza dipendenze
-- ✅ Dockerfile ottimizzato
-- ✅ Build verificato nel workflow
+- ✅ RequestHandler implementation
+- ✅ Quarkus logging
+- ✅ Uber JAR ottimizzato
 
-**ADESSO FUNZIONA!** 🎉
+**MINIMALE E FUNZIONALE!** 🎉

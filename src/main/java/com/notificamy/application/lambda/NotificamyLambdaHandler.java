@@ -3,40 +3,47 @@ package com.notificamy.application.lambda;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import jakarta.inject.Named;
+import org.jboss.logging.Logger;
 
 /**
- * MINIMAL AWS Lambda handler
- * NO dependencies, NO frameworks - just pure Java
+ * Lambda handler che implementa RequestHandler
+ * Minimale e funzionale per AWS Lambda
  */
+@Named("notificamyLambda")
 public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
     
+    private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
+    
     public NotificamyLambdaHandler() {
-        System.out.println("🚀 NotificamyLambdaHandler constructor called");
+        LOG.info("🚀 NotificamyLambdaHandler constructor called - Lambda ready!");
     }
     
     @Override
     public String handleRequest(SQSEvent event, Context context) {
-        System.out.println("🚀 handleRequest called - Lambda is working!");
+        LOG.info("🚀 handleRequest called - Lambda is working!");
         
         if (event == null) {
-            System.out.println("⚠️ Event is null");
+            LOG.warn("⚠️ Event is null");
             return "Event is null";
         }
         
         if (event.getRecords() == null) {
-            System.out.println("⚠️ No records in event");
+            LOG.warn("⚠️ No records in event");
             return "No records";
         }
         
         int recordCount = event.getRecords().size();
-        System.out.println("📨 Processing " + recordCount + " SQS records");
+        LOG.infof("📨 Processing %d SQS records", recordCount);
         
         for (SQSEvent.SQSMessage record : event.getRecords()) {
-            System.out.println("📋 Message body: " + record.getBody());
+            LOG.infof("📋 Message body: %s", record.getBody());
+            LOG.infof("📋 Message ID: %s", record.getMessageId());
+            LOG.infof("📋 Receipt Handle: %s", record.getReceiptHandle());
         }
         
-        String result = "✅ Processed " + recordCount + " records successfully";
-        System.out.println(result);
+        String result = String.format("✅ Processed %d records successfully", recordCount);
+        LOG.info(result);
         return result;
     }
 }
