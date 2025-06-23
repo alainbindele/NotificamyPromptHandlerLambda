@@ -1,5 +1,5 @@
-# Multi-stage build for better Lambda compatibility
-FROM maven:3.9.5-eclipse-temurin-21 AS build
+# Multi-stage build for better Lambda compatibility - Updated for Java 24
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 
 # Set working directory
 WORKDIR /build
@@ -21,7 +21,7 @@ RUN mvn dependency:go-offline -q --settings settings.xml
 # Copy source code
 COPY src ./src
 
-# Build the application with uber-jar
+# Build the application with uber-jar using Java 21 in container
 RUN mvn clean package -DskipTests -Dquarkus.package.type=uber-jar -q --settings settings.xml
 
 # Verify JAR was created and contains our handler class
