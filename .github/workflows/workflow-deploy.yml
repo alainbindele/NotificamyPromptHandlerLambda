@@ -56,7 +56,7 @@ jobs:
           docker buildx build \
             --platform linux/amd64 \
             --push \
-            --tag 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest \
+            --tag 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
             .
 
       # Set Lambda environment variables
@@ -80,7 +80,7 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name NotificamyNotifierLambda \
-            --image-uri 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest \
+            --image-uri 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
             --architectures x86_64
 
       # Verify deployment

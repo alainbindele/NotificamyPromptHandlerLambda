@@ -7,7 +7,7 @@ echo "🚀 Creazione Lambda function NotificamyNotifierLambda..."
 # Verifica che l'immagine esista su ECR
 echo "📋 Verifica immagine su ECR..."
 aws ecr describe-images \
-  --repository-name notificamy/notifier \
+  --repository-name notificamy \
   --region eu-south-1 \
   --query 'imageDetails[0].imageTags[0]' \
   --output text
