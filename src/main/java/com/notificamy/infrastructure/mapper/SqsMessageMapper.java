@@ -78,9 +78,24 @@ public interface SqsMessageMapper {
         
         String localPart = email.substring(0, email.indexOf("@"));
         // Convert dots and underscores to spaces and capitalize
-        return localPart.replace(".", " ")
-                       .replace("_", " ")
-                       .toLowerCase()
-                       .replaceAll("\\b\\w", m -> m.group().toUpperCase());
+        String result = localPart.replace(".", " ").replace("_", " ").toLowerCase();
+        
+        // Capitalize first letter of each word
+        StringBuilder capitalized = new StringBuilder();
+        boolean capitalizeNext = true;
+        
+        for (char c : result.toCharArray()) {
+            if (Character.isWhitespace(c)) {
+                capitalizeNext = true;
+                capitalized.append(c);
+            } else if (capitalizeNext) {
+                capitalized.append(Character.toUpperCase(c));
+                capitalizeNext = false;
+            } else {
+                capitalized.append(c);
+            }
+        }
+        
+        return capitalized.toString();
     }
 }
