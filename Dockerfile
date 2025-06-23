@@ -47,4 +47,5 @@ FROM public.ecr.aws/lambda/java:21
 COPY --from=build /build/target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ${LAMBDA_TASK_ROOT}/
 
 # CRITICAL: Use QuarkusStreamHandler - this is the correct approach for Quarkus Lambda
+# The actual handler will be resolved via CDI using the @Named("lambdaHandler") annotation
 CMD ["io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest"]
