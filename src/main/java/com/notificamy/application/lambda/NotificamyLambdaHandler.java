@@ -4,12 +4,18 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.notificamy.domain.service.NotificationService;
+import com.notificamy.domain.model.NotificationChannel;
+import com.notificamy.domain.model.NotificationRequest;
+import com.notificamy.domain.model.User;
+import com.notificamy.domain.port.AiServicePort;
+import com.notificamy.domain.port.NotificationPort;
 import com.notificamy.infrastructure.external.dto.SqsMessage;
 import com.notificamy.infrastructure.mapper.SqsMessageMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.jboss.logging.Logger;
+
+import java.util.Set;
 
 @Named("notificamyLambda")
 public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String> {
@@ -17,7 +23,10 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
     private static final Logger LOG = Logger.getLogger(NotificamyLambdaHandler.class);
     
     @Inject
-    NotificationService notificationService;
+    AiServicePort aiService;
+    
+    @Inject
+    NotificationPort notificationPort;
     
     @Inject
     SqsMessageMapper sqsMessageMapper;
@@ -49,17 +58,36 @@ public class NotificamyLambdaHandler implements RequestHandler<SQSEvent, String>
     private void processMessage(SQSEvent.SQSMessage sqsMessage) throws Exception {
         LOG.infof("Processing message: %s", sqsMessage.getBody());
         
-        // Parse SQS message using external DTO
+        // Parse SQS message
         SqsMessage message = objectMapper.readValue(sqsMessage.getBody(), SqsMessage.class);
-        LOG.infof("Parsed message: %s", message);
+        LOG.infof("Parsed message for query ID: %d", message.getQueryId());
         
-        // Extract domain values using mapper
+        // Extract data using mapper
         Long queryId = sqsMessageMapper.extractQueryId(message);
         String prompt = sqsMessageMapper.extractPrompt(message);
+        User user = sqsMessageMapper.extractUser(message);
+        Set<NotificationChannel> enabledChannels = sqsMessageMapper.extractEnabledChannels(message);
         
-        // Delegate to domain service
-        notificationService.processNotificationRequest(queryId, prompt);
+        // Validate that at least one channel is available
+        if (enabledChannels.isEmpty()) {
+            throw new RuntimeException("No notification channels available for query ID: " + queryId);
+        }
         
-        LOG.infof("Message processed successfully for query ID: %d", queryId);
+        LOG.infof("User: %s, Enabled channels: %s", user.getEmail(), enabledChannels);
+        
+        // Process with AI
+        String aiResponse = aiService.processPrompt(prompt);
+        LOG.infof("AI response generated for query ID: %d", queryId);
+        
+        // Create notification request
+        NotificationRequest notificationRequest = new NotificationRequest(
+                queryId, prompt, user, enabledChannels, aiResponse
+        );
+        
+        // Send notifications through all enabled channels using Decorator pattern
+        notificationPort.sendNotification(notificationRequest);
+        
+        LOG.infof("Notification request processed successfully for query ID: %d through %d channels", 
+                queryId, enabledChannels.size());
     }
 }

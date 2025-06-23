@@ -18,14 +18,19 @@ public class NotificationDecorator implements NotificationStrategy {
     
     @Override
     public void sendNotification(NotificationRequest request) {
-        try {
-            // Execute current strategy
-            if (strategy != null) {
+        // Execute current strategy first
+        if (strategy != null) {
+            try {
+                LOG.infof("Executing notification strategy: %s for query %d", 
+                        strategy.getClass().getSimpleName(), request.getQueryId());
                 strategy.sendNotification(request);
+                LOG.infof("Successfully executed %s for query %d", 
+                        strategy.getClass().getSimpleName(), request.getQueryId());
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to send notification via %s for query %d", 
+                        strategy.getClass().getSimpleName(), request.getQueryId());
+                // Continue with other channels even if one fails
             }
-        } catch (Exception e) {
-            LOG.errorf(e, "Failed to send notification via %s for query %d", 
-                    strategy.getClass().getSimpleName(), request.getQueryId());
         }
         
         // Continue with next decorator in chain

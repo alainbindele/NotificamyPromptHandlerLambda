@@ -12,6 +12,18 @@ public class SqsMessage {
     @JsonProperty("query_id")
     private Long queryId;
     
+    @JsonProperty("user_email")
+    private String userEmail;
+    
+    @JsonProperty("user_phone")
+    private String userPhone;
+    
+    @JsonProperty("user_slack_webhook")
+    private String userSlackWebhook;
+    
+    @JsonProperty("user_discord_webhook")
+    private String userDiscordWebhook;
+    
     @JsonProperty("prompt")
     private String prompt;
 }

@@ -35,10 +35,11 @@ public class NotificationAdapter implements NotificationPort {
                 request.getQueryId(), request.getChannels().size());
         
         // Build decorator chain based on enabled channels
-        NotificationDecorator decorator = buildDecoratorChain(request);
+        NotificationDecorator decoratorChain = buildDecoratorChain(request);
         
-        if (decorator != null) {
-            decorator.sendNotification(request);
+        if (decoratorChain != null) {
+            decoratorChain.sendNotification(request);
+            LOG.infof("All notifications sent successfully for query %d", request.getQueryId());
         } else {
             LOG.warnf("No notification channels enabled for query %d", request.getQueryId());
         }
@@ -47,26 +48,29 @@ public class NotificationAdapter implements NotificationPort {
     private NotificationDecorator buildDecoratorChain(NotificationRequest request) {
         NotificationDecorator chain = null;
         
-        for (NotificationChannel channel : request.getChannels()) {
-            NotificationDecorator strategy = getStrategyForChannel(channel);
-            if (strategy != null) {
-                if (chain == null) {
-                    chain = strategy;
-                } else {
-                    chain = new NotificationDecorator(strategy, chain);
-                }
-            }
+        // Build chain in reverse order so the first channel added becomes the last executed
+        // This ensures proper decorator pattern execution order
+        
+        if (request.getChannels().contains(NotificationChannel.DISCORD)) {
+            chain = new NotificationDecorator(discordStrategy, chain);
+            LOG.debugf("Added Discord to notification chain for query %d", request.getQueryId());
+        }
+        
+        if (request.getChannels().contains(NotificationChannel.SLACK)) {
+            chain = new NotificationDecorator(slackStrategy, chain);
+            LOG.debugf("Added Slack to notification chain for query %d", request.getQueryId());
+        }
+        
+        if (request.getChannels().contains(NotificationChannel.WHATSAPP)) {
+            chain = new NotificationDecorator(whatsAppStrategy, chain);
+            LOG.debugf("Added WhatsApp to notification chain for query %d", request.getQueryId());
+        }
+        
+        if (request.getChannels().contains(NotificationChannel.EMAIL)) {
+            chain = new NotificationDecorator(emailStrategy, chain);
+            LOG.debugf("Added Email to notification chain for query %d", request.getQueryId());
         }
         
         return chain;
-    }
-    
-    private NotificationDecorator getStrategyForChannel(NotificationChannel channel) {
-        return switch (channel) {
-            case EMAIL -> new NotificationDecorator(emailStrategy, null);
-            case WHATSAPP -> new NotificationDecorator(whatsAppStrategy, null);
-            case SLACK -> new NotificationDecorator(slackStrategy, null);
-            case DISCORD -> new NotificationDecorator(discordStrategy, null);
-        };
     }
 }

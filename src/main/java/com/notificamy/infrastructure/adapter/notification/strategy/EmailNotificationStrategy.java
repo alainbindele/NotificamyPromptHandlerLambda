@@ -25,9 +25,11 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     @Override
     public void sendNotification(NotificationRequest request) {
         try {
-            String subject = "Notificamy: Your AI-Generated Notification";
+            String subject = "Notificamy: Risposta AI per la tua richiesta";
             String htmlBody = buildHtmlEmailBody(request);
             String textBody = buildTextEmailBody(request);
+            
+            LOG.infof("Sending email to %s for query %d", request.getUser().getEmail(), request.getQueryId());
             
             SendEmailRequest emailRequest = SendEmailRequest.builder()
                     .source(fromName + " <" + fromEmail + ">")
@@ -53,11 +55,11 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                     .build();
             
             SendEmailResponse response = sesClient.sendEmail(emailRequest);
-            LOG.infof("Email sent successfully to %s. Message ID: %s", 
-                    request.getUser().getEmail(), response.messageId());
+            LOG.infof("Email sent successfully to %s for query %d. Message ID: %s", 
+                    request.getUser().getEmail(), request.getQueryId(), response.messageId());
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send email to %s", request.getUser().getEmail());
+            LOG.errorf(e, "Failed to send email to %s for query %d", request.getUser().getEmail(), request.getQueryId());
             throw new RuntimeException("Failed to send email", e);
         }
     }
@@ -68,71 +70,93 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                 <html>
                 <head>
                     <meta charset="UTF-8">
-                    <title>Notificamy Notification</title>
+                    <title>Notificamy - Risposta AI</title>
                     <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-                        .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
-                        .prompt-box { background: white; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; }
-                        .response-box { background: white; padding: 15px; border-left: 4px solid #764ba2; margin: 15px 0; }
-                        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                        .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+                        .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px 20px; text-align: center; }
+                        .header h1 { margin: 0; font-size: 28px; font-weight: 300; }
+                        .header p { margin: 10px 0 0 0; opacity: 0.9; }
+                        .content { padding: 30px 20px; }
+                        .greeting { font-size: 18px; margin-bottom: 25px; color: #2c3e50; }
+                        .section { margin: 25px 0; }
+                        .section-title { font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 10px; display: flex; align-items: center; }
+                        .prompt-box { background: #f8f9fa; padding: 20px; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; margin: 15px 0; }
+                        .response-box { background: #f1f8ff; padding: 20px; border-left: 4px solid #764ba2; border-radius: 0 8px 8px 0; margin: 15px 0; }
+                        .timestamp { background: #e9ecef; padding: 10px 15px; border-radius: 6px; font-size: 14px; color: #6c757d; text-align: center; }
+                        .footer { background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #dee2e6; }
+                        .footer p { margin: 5px 0; color: #6c757d; font-size: 14px; }
+                        .emoji { font-size: 20px; margin-right: 8px; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>📧 Notificamy</h1>
-                            <p>Your AI-Powered Email Notification</p>
+                            <h1>🔔 Notificamy</h1>
+                            <p>La tua risposta AI è pronta!</p>
                         </div>
                         <div class="content">
-                            <h2>Hello %s!</h2>
-                            <p>Your notification request has been processed by our AI assistant.</p>
+                            <div class="greeting">Ciao %s! 👋</div>
                             
-                            <div class="prompt-box">
-                                <h3>📝 Your Request:</h3>
-                                <p><em>"%s"</em></p>
+                            <div class="section">
+                                <div class="section-title">
+                                    <span class="emoji">📝</span>
+                                    La tua richiesta:
+                                </div>
+                                <div class="prompt-box">
+                                    <em>"%s"</em>
+                                </div>
                             </div>
                             
-                            <div class="response-box">
-                                <h3>🤖 AI Response:</h3>
-                                <p>%s</p>
+                            <div class="section">
+                                <div class="section-title">
+                                    <span class="emoji">🤖</span>
+                                    Risposta dell'AI:
+                                </div>
+                                <div class="response-box">
+                                    %s
+                                </div>
                             </div>
                             
-                            <p>Thank you for using Notificamy!</p>
+                            <div class="timestamp">
+                                ⏰ Ricevuto: %s
+                            </div>
                         </div>
                         <div class="footer">
-                            <p>© 2024 Notificamy. Revolutionizing notifications with AI.</p>
+                            <p><strong>Grazie per aver usato Notificamy!</strong> 🚀</p>
+                            <p>© 2024 Notificamy. Notifiche intelligenti con AI.</p>
                         </div>
                     </div>
                 </body>
                 </html>
                 """, 
-                request.getUser().getName() != null ? request.getUser().getName() : "User", 
+                request.getUser().getName() != null ? request.getUser().getName() : "Utente", 
                 request.getPrompt(), 
-                request.getAiResponse().replace("\n", "<br>"));
+                request.getAiResponse().replace("\n", "<br>"),
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
     }
     
     private String buildTextEmailBody(NotificationRequest request) {
         return String.format("""
-                Notificamy - Your AI-Powered Email Notification
+                NOTIFICAMY - RISPOSTA AI
                 
-                Hello %s!
+                Ciao %s!
                 
-                Your notification request has been processed by our AI assistant.
-                
-                Your Request:
+                La tua richiesta:
                 "%s"
                 
-                AI Response:
+                Risposta dell'AI:
                 %s
                 
-                Thank you for using Notificamy!
+                Ricevuto: %s
                 
-                © 2024 Notificamy. Revolutionizing notifications with AI.
+                Grazie per aver usato Notificamy!
+                
+                © 2024 Notificamy. Notifiche intelligenti con AI.
                 """, 
-                request.getUser().getName() != null ? request.getUser().getName() : "User", 
+                request.getUser().getName() != null ? request.getUser().getName() : "Utente", 
                 request.getPrompt(), 
-                request.getAiResponse());
+                request.getAiResponse(),
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
     }
 }

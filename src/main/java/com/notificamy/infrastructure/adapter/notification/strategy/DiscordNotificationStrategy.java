@@ -10,6 +10,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -35,45 +37,63 @@ public class DiscordNotificationStrategy implements NotificationStrategy {
         try {
             Map<String, Object> payload = buildDiscordPayload(request);
             
+            LOG.infof("Sending Discord message to user %s for query %d", request.getUser().getEmail(), request.getQueryId());
+            
             Response response = client.target(webhookUrl)
                     .request(MediaType.APPLICATION_JSON)
                     .header("Content-Type", "application/json")
                     .post(Entity.json(payload));
             
             if (response.getStatus() == 204) {
-                LOG.infof("Discord message sent successfully to user %s", request.getUser().getEmail());
+                LOG.infof("Discord message sent successfully to user %s for query %d", request.getUser().getEmail(), request.getQueryId());
             } else {
-                LOG.errorf("Discord webhook error: %d - %s", response.getStatus(), response.readEntity(String.class));
+                LOG.errorf("Discord webhook error for query %d: %d - %s", 
+                        request.getQueryId(), response.getStatus(), response.readEntity(String.class));
             }
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send Discord message to user %s", request.getUser().getEmail());
+            LOG.errorf(e, "Failed to send Discord message to user %s for query %d", request.getUser().getEmail(), request.getQueryId());
             throw new RuntimeException("Failed to send Discord message", e);
         }
     }
     
     private Map<String, Object> buildDiscordPayload(NotificationRequest request) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        
         return Map.of(
-            "content", String.format("🔔 **Notificamy Notification** for %s", 
-                    request.getUser().getName() != null ? request.getUser().getName() : "User"),
+            "content", String.format("🔔 **Notificamy** - Nuova risposta AI per %s", 
+                    request.getUser().getName() != null ? request.getUser().getName() : "Utente"),
             "embeds", List.of(
                 Map.of(
-                    "title", "Your AI-Generated Notification",
+                    "title", "🤖 Risposta AI Generata",
                     "color", 6750207, // Purple color
                     "fields", List.of(
                         Map.of(
-                            "name", "📝 Your Request",
-                            "value", String.format("\"%s\"", request.getPrompt()),
+                            "name", "📝 La tua richiesta",
+                            "value", String.format("```\n%s\n```", request.getPrompt()),
                             "inline", false
                         ),
                         Map.of(
-                            "name", "🤖 AI Response",
-                            "value", request.getAiResponse(),
+                            "name", "🤖 Risposta dell'AI",
+                            "value", request.getAiResponse().length() > 1000 ? 
+                                    request.getAiResponse().substring(0, 1000) + "..." : 
+                                    request.getAiResponse(),
                             "inline", false
+                        ),
+                        Map.of(
+                            "name", "⏰ Ricevuto",
+                            "value", timestamp,
+                            "inline", true
+                        ),
+                        Map.of(
+                            "name", "🆔 Query ID",
+                            "value", String.valueOf(request.getQueryId()),
+                            "inline", true
                         )
                     ),
                     "footer", Map.of(
-                        "text", "Thank you for using Notificamy! 🚀"
+                        "text", "Grazie per aver usato Notificamy! 🚀",
+                        "icon_url", "https://cdn.discordapp.com/emojis/123456789.png"
                     ),
                     "timestamp", java.time.Instant.now().toString()
                 )

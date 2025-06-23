@@ -56,6 +56,8 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
                 "text", Map.of("body", message)
             );
             
+            LOG.infof("Sending WhatsApp message to %s for query %d", phoneNumber, request.getQueryId());
+            
             Response response = client.target(whatsappApiUrl)
                     .request(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiToken)
@@ -63,33 +65,37 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
                     .post(Entity.json(payload));
             
             if (response.getStatus() == 200) {
-                LOG.infof("WhatsApp message sent successfully to %s", phoneNumber);
+                LOG.infof("WhatsApp message sent successfully to %s for query %d", phoneNumber, request.getQueryId());
             } else {
-                LOG.errorf("WhatsApp API error: %d - %s", response.getStatus(), response.readEntity(String.class));
+                LOG.errorf("WhatsApp API error for query %d: %d - %s", 
+                        request.getQueryId(), response.getStatus(), response.readEntity(String.class));
             }
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send WhatsApp message to %s", phoneNumber);
+            LOG.errorf(e, "Failed to send WhatsApp message to %s for query %d", phoneNumber, request.getQueryId());
             throw new RuntimeException("Failed to send WhatsApp message", e);
         }
     }
     
     private String buildWhatsAppMessage(NotificationRequest request) {
         return String.format("""
-                🔔 *Notificamy Notification*
+                🔔 *Notificamy - Risposta AI*
                 
-                Hello %s!
+                Ciao %s! 👋
                 
-                📝 *Your Request:*
+                📝 *La tua richiesta:*
                 "%s"
                 
-                🤖 *AI Response:*
+                🤖 *Risposta dell'AI:*
                 %s
                 
-                Thank you for using Notificamy! 🚀
+                ⏰ Ricevuto: %s
+                
+                Grazie per aver usato Notificamy! 🚀
                 """, 
-                request.getUser().getName() != null ? request.getUser().getName() : "User",
+                request.getUser().getName() != null ? request.getUser().getName() : "Utente",
                 request.getPrompt(),
-                request.getAiResponse());
+                request.getAiResponse(),
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
     }
 }

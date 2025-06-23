@@ -1,14 +1,15 @@
 package com.notificamy.domain.service;
 
 import com.notificamy.domain.model.NotificationRequest;
-import com.notificamy.domain.model.Query;
 import com.notificamy.domain.model.User;
+import com.notificamy.domain.model.NotificationChannel;
 import com.notificamy.domain.port.AiServicePort;
 import com.notificamy.domain.port.NotificationPort;
-import com.notificamy.domain.port.QueryRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
+
+import java.util.Set;
 
 @ApplicationScoped
 public class NotificationService {
@@ -16,26 +17,17 @@ public class NotificationService {
     private static final Logger LOG = Logger.getLogger(NotificationService.class);
     
     @Inject
-    QueryRepositoryPort queryRepository;
-    
-    @Inject
     AiServicePort aiService;
     
     @Inject
     NotificationPort notificationPort;
     
-    public void processNotificationRequest(Long queryId, String prompt) {
-        LOG.infof("Processing notification request for query ID: %d", queryId);
+    public void processNotificationRequest(Long queryId, String prompt, User user, Set<NotificationChannel> enabledChannels) {
+        LOG.infof("Processing notification request for query ID: %d with %d channels", queryId, enabledChannels.size());
         
-        // Fetch query and user
-        Query query = queryRepository.findById(queryId);
-        if (query == null) {
-            throw new RuntimeException("Query not found: " + queryId);
-        }
-        
-        User user = queryRepository.findUserById(query.getUserId());
-        if (user == null) {
-            throw new RuntimeException("User not found for query: " + queryId);
+        // Validate input
+        if (enabledChannels == null || enabledChannels.isEmpty()) {
+            throw new RuntimeException("No notification channels enabled for query: " + queryId);
         }
         
         // Process with AI
@@ -43,12 +35,13 @@ public class NotificationService {
         
         // Create notification request
         NotificationRequest notificationRequest = new NotificationRequest(
-                queryId, prompt, user, query.getEnabledChannels(), aiResponse
+                queryId, prompt, user, enabledChannels, aiResponse
         );
         
-        // Send notifications through all enabled channels
+        // Send notifications through all enabled channels using Decorator pattern
         notificationPort.sendNotification(notificationRequest);
         
-        LOG.infof("Notification request processed successfully for query ID: %d", queryId);
+        LOG.infof("Notification request processed successfully for query ID: %d through %d channels", 
+                queryId, enabledChannels.size());
     }
 }

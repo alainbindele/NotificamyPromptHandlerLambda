@@ -10,6 +10,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -35,53 +37,64 @@ public class SlackNotificationStrategy implements NotificationStrategy {
         try {
             Map<String, Object> payload = buildSlackPayload(request);
             
+            LOG.infof("Sending Slack message to user %s for query %d", request.getUser().getEmail(), request.getQueryId());
+            
             Response response = client.target(webhookUrl)
                     .request(MediaType.APPLICATION_JSON)
                     .header("Content-Type", "application/json")
                     .post(Entity.json(payload));
             
             if (response.getStatus() == 200) {
-                LOG.infof("Slack message sent successfully to user %s", request.getUser().getEmail());
+                LOG.infof("Slack message sent successfully to user %s for query %d", request.getUser().getEmail(), request.getQueryId());
             } else {
-                LOG.errorf("Slack webhook error: %d - %s", response.getStatus(), response.readEntity(String.class));
+                LOG.errorf("Slack webhook error for query %d: %d - %s", 
+                        request.getQueryId(), response.getStatus(), response.readEntity(String.class));
             }
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send Slack message to user %s", request.getUser().getEmail());
+            LOG.errorf(e, "Failed to send Slack message to user %s for query %d", request.getUser().getEmail(), request.getQueryId());
             throw new RuntimeException("Failed to send Slack message", e);
         }
     }
     
     private Map<String, Object> buildSlackPayload(NotificationRequest request) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+        
         return Map.of(
-            "text", "Notificamy Notification",
+            "text", "Notificamy - Nuova risposta AI",
             "blocks", List.of(
                 Map.of(
                     "type", "header",
                     "text", Map.of(
                         "type", "plain_text",
-                        "text", "🔔 Notificamy Notification"
+                        "text", "🔔 Notificamy - Risposta AI"
                     )
                 ),
                 Map.of(
                     "type", "section",
                     "text", Map.of(
                         "type", "mrkdwn",
-                        "text", String.format("Hello *%s*!\n\nYour notification request has been processed by our AI assistant.",
-                                request.getUser().getName() != null ? request.getUser().getName() : "User")
+                        "text", String.format("Ciao *%s*! 👋\n\nLa tua richiesta è stata elaborata dall'AI.",
+                                request.getUser().getName() != null ? request.getUser().getName() : "Utente")
                     )
+                ),
+                Map.of(
+                    "type", "divider"
                 ),
                 Map.of(
                     "type", "section",
                     "fields", List.of(
                         Map.of(
                             "type", "mrkdwn",
-                            "text", String.format("*📝 Your Request:*\n\"%s\"", request.getPrompt())
-                        ),
-                        Map.of(
-                            "type", "mrkdwn",
-                            "text", String.format("*🤖 AI Response:*\n%s", request.getAiResponse())
+                            "text", String.format("*📝 La tua richiesta:*\n\"%s\"", request.getPrompt())
                         )
+                    )
+                ),
+                Map.of(
+                    "type", "section",
+                    "text", Map.of(
+                        "type", "mrkdwn",
+                        "text", String.format("*🤖 Risposta dell'AI:*\n%s", request.getAiResponse())
                     )
                 ),
                 Map.of(
@@ -89,7 +102,7 @@ public class SlackNotificationStrategy implements NotificationStrategy {
                     "elements", List.of(
                         Map.of(
                             "type", "mrkdwn",
-                            "text", "Thank you for using Notificamy! 🚀"
+                            "text", String.format("⏰ Ricevuto: %s | Grazie per aver usato Notificamy! 🚀", timestamp)
                         )
                     )
                 )
