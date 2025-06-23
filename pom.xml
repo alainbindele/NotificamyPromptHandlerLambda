@@ -6,7 +6,7 @@
   <artifactId>lambda-processor</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <properties>
-    <compiler-plugin.version>3.11.0</compiler-plugin.version>
+    <compiler-plugin.version>3.12.1</compiler-plugin.version>
     <maven.compiler.release>21</maven.compiler.release>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
@@ -19,7 +19,7 @@
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <lombok.version>1.18.30</lombok.version>
     <skipITs>true</skipITs>
-    <surefire-plugin.version>3.0.0</surefire-plugin.version>
+    <surefire-plugin.version>3.2.5</surefire-plugin.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -160,6 +160,9 @@
           <target>21</target>
           <compilerArgs>
             <arg>-parameters</arg>
+            <!-- Aggiungi flag per compatibilità Java 21 -->
+            <arg>--enable-preview</arg>
+            <arg>-Xlint:none</arg>
           </compilerArgs>
           <annotationProcessorPaths>
             <path>
@@ -173,6 +176,10 @@
               <version>${mapstruct.version}</version>
             </path>
           </annotationProcessorPaths>
+          <!-- Forza l'uso di un fork separato per evitare conflitti -->
+          <fork>true</fork>
+          <meminitial>256m</meminitial>
+          <maxmem>1024m</maxmem>
         </configuration>
       </plugin>
       <plugin>
@@ -184,6 +191,9 @@
             <maven.home>${maven.home}</maven.home>
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
           </systemPropertyVariables>
+          <!-- Forza l'uso di un fork separato -->
+          <forkCount>1</forkCount>
+          <reuseForks>false</reuseForks>
         </configuration>
       </plugin>
       <plugin>
