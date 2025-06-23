@@ -23,7 +23,11 @@ public class DatabaseConfigService {
     public String getJdbcUrl() {
         if (cachedJdbcUrl == null) {
             cachedJdbcUrl = secretsManager.getSecretValue(databaseSecretName, "DB_URL");
-            LOG.infof("Database URL retrieved from secrets manager");
+            if (cachedJdbcUrl != null) {
+                // Set system property for Quarkus to pick up
+                System.setProperty("DB_URL", cachedJdbcUrl);
+                LOG.infof("Database URL retrieved from secrets manager");
+            }
         }
         return cachedJdbcUrl;
     }
@@ -31,7 +35,11 @@ public class DatabaseConfigService {
     public String getUsername() {
         if (cachedUsername == null) {
             cachedUsername = secretsManager.getSecretValue(databaseSecretName, "DB_USER");
-            LOG.infof("Database username retrieved from secrets manager");
+            if (cachedUsername != null) {
+                // Set system property for Quarkus to pick up
+                System.setProperty("DB_USERNAME", cachedUsername);
+                LOG.infof("Database username retrieved from secrets manager");
+            }
         }
         return cachedUsername;
     }
@@ -39,8 +47,19 @@ public class DatabaseConfigService {
     public String getPassword() {
         if (cachedPassword == null) {
             cachedPassword = secretsManager.getSecretValue(databaseSecretName, "DB_PASSWORD");
-            LOG.infof("Database password retrieved from secrets manager");
+            if (cachedPassword != null) {
+                // Set system property for Quarkus to pick up
+                System.setProperty("DB_PASSWORD", cachedPassword);
+                LOG.infof("Database password retrieved from secrets manager");
+            }
         }
         return cachedPassword;
+    }
+    
+    // Initialize database configuration on startup
+    public void initializeDatabaseConfig() {
+        getJdbcUrl();
+        getUsername();
+        getPassword();
     }
 }

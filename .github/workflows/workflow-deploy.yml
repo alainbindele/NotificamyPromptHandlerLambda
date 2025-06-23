@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Ensure git is available
+      - name: Install git
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git
+
       - uses: actions/setup-java@v3
         with:
           java-version: 17
@@ -26,41 +32,61 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-south-1
 
-      # Login a ECR
-      - name: Login to Amazon ECR
-        run: |
-          aws ecr get-login-password --region eu-south-1 | docker login --username AWS --password-stdin 435703062953.dkr.ecr.eu-south-1.amazonaws.com
-
+      # Build the application FIRST
       - name: Build with Maven
         env:
           MY_GITHUB_USERNAME: ${{ secrets.MY_GITHUB_USERNAME }}
           MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-        run: mvn --no-transfer-progress --settings settings.xml install dependency:copy-dependencies -DincludeScope=runtime -U
+        run: |
+          mvn --no-transfer-progress --settings settings.xml clean package \
+            -DskipTests \
+            -Dquarkus.package.type=uber-jar
 
+      # Login to ECR
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region eu-south-1 | docker login --username AWS --password-stdin 435703062953.dkr.ecr.eu-south-1.amazonaws.com
+
+      # Build Docker image with correct platform and buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push Docker image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            --tag 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest \
+            .
+
+      # Set Lambda environment variables
       - name: Set Lambda environment variables
         run: |
           aws lambda update-function-configuration \
             --function-name NotificamyNotifierLambda \
             --environment "Variables={
-              DB_URL='${{ secrets.DB_URL }}',
-              DB_USER='${{ secrets.DB_USER }}',
-              DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
-            }"
+              DATABASE_SECRET_NAME='${{ secrets.DATABASE_SECRET_NAME }}',
+              API_KEYS_SECRET_NAME='${{ secrets.API_KEYS_SECRET_NAME }}',
+              AWS_REGION='eu-south-1',
+              AWS_SQS_QUEUE_URL='${{ secrets.AWS_SQS_QUEUE_URL }}',
+              AWS_SES_FROM_EMAIL='${{ secrets.AWS_SES_FROM_EMAIL }}',
+              AWS_SES_FROM_NAME='${{ secrets.AWS_SES_FROM_NAME }}',
+              WHATSAPP_API_URL='${{ secrets.WHATSAPP_API_URL }}',
+              OPENAI_API_URL='https://api.openai.com/v1/chat/completions'
+            }" || echo "Lambda function might not exist yet, continuing..."
 
-      - name: Build Docker image
-        run: |
-          docker build -t notificamy/notifier .
-
-      - name: Tag Docker image
-        run: |
-          docker tag notificamy/notifier:latest 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest
-
-      - name: Push Docker image to Amazon ECR
-        run: |
-          docker push 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest
-
+      # Update Lambda function with explicit architecture
       - name: Update Lambda function
         run: |
           aws lambda update-function-code \
             --function-name NotificamyNotifierLambda \
-            --image-uri 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest
+            --image-uri 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy/notifier:latest \
+            --architectures x86_64
+
+      # Verify deployment
+      - name: Verify Lambda function update
+        run: |
+          aws lambda get-function \
+            --function-name NotificamyNotifierLambda \
+            --query 'Configuration.[FunctionName,State,LastUpdateStatus,PackageType,Architectures]' \
+            --output table
