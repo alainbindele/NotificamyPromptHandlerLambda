@@ -28,10 +28,13 @@ RUN mvn clean package -DskipTests -Dquarkus.package.type=uber-jar -q --settings 
 RUN ls -la target/ && \
     if [ -f target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ]; then \
         echo "✅ JAR file created successfully"; \
+        echo "📋 JAR size: $(du -h target/lambda-processor-1.0.0-SNAPSHOT-runner.jar)"; \
         echo "📋 Checking for handler class..."; \
-        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -i "NotificamyLambdaHandler" || echo "⚠️ Handler class not found in JAR"; \
+        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -i "NotificamyLambdaHandler" && echo "✅ Handler class found" || echo "⚠️ Handler class not found in JAR"; \
         echo "📋 Checking Quarkus Lambda classes..."; \
-        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -i "QuarkusStreamHandler" || echo "⚠️ QuarkusStreamHandler not found"; \
+        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -i "QuarkusStreamHandler" && echo "✅ QuarkusStreamHandler found" || echo "⚠️ QuarkusStreamHandler not found"; \
+        echo "📋 Checking CDI beans..."; \
+        jar tf target/lambda-processor-1.0.0-SNAPSHOT-runner.jar | grep -E "(beans\.xml|jandex\.idx)" && echo "✅ CDI configuration found" || echo "⚠️ CDI configuration not found"; \
     else \
         echo "❌ JAR file not found"; \
         exit 1; \
