@@ -31,6 +31,28 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-south-1
 
+      # Build the application FIRST (outside Docker for better reliability)
+      - name: Build with Maven
+        env:
+          MY_GITHUB_USERNAME: ${{ secrets.MY_GITHUB_USERNAME }}
+          MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+        run: |
+          echo "📦 Building application with Maven..."
+          mvn --no-transfer-progress --settings settings.xml clean package \
+            -DskipTests \
+            -Dquarkus.package.type=uber-jar
+
+      # Verify JAR was created
+      - name: Verify JAR file
+        run: |
+          echo "📋 Verifying JAR file..."
+          ls -la target/
+          if [ ! -f target/lambda-processor-1.0.0-SNAPSHOT-runner.jar ]; then
+            echo "❌ JAR file not found!"
+            exit 1
+          fi
+          echo "✅ JAR file created: $(ls -lh target/lambda-processor-1.0.0-SNAPSHOT-runner.jar)"
+
       # Create ECR repository if it doesn't exist
       - name: Create ECR repository
         run: |
@@ -58,16 +80,27 @@ jobs:
             echo "ℹ️ Lambda function doesn't exist, will create new one"
           fi
 
-      # Build and push Docker image with single-stage build
+      # Try Lambda-optimized Dockerfile first, fallback to multi-stage
       - name: Build and push Docker image
         run: |
-          echo "🐳 Building Docker image with single-stage build..."
-          docker build \
+          echo "🐳 Attempting Lambda-optimized build first..."
+          
+          # Try the Lambda-optimized Dockerfile first
+          if docker build \
             --platform linux/amd64 \
             --tag 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
-            --build-arg MY_GITHUB_USERNAME=${{ secrets.MY_GITHUB_USERNAME }} \
-            --build-arg MY_GITHUB_TOKEN=${{ secrets.MY_GITHUB_TOKEN }} \
-            .
+            -f Dockerfile.lambda-optimized \
+            .; then
+            echo "✅ Lambda-optimized build successful"
+          else
+            echo "⚠️ Lambda-optimized build failed, trying multi-stage build..."
+            docker build \
+              --platform linux/amd64 \
+              --tag 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest \
+              --build-arg MY_GITHUB_USERNAME=${{ secrets.MY_GITHUB_USERNAME }} \
+              --build-arg MY_GITHUB_TOKEN=${{ secrets.MY_GITHUB_TOKEN }} \
+              .
+          fi
           
           echo "📤 Pushing image to ECR..."
           docker push 435703062953.dkr.ecr.eu-south-1.amazonaws.com/notificamy:latest
