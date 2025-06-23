@@ -14,6 +14,7 @@
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.version>3.6.4</quarkus.platform.version>
     <quarkus.amazon.services.version>2.16.12.Final</quarkus.amazon.services.version>
+    <aws.sdk.version>2.25.10</aws.sdk.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
@@ -31,6 +32,13 @@
         <groupId>io.quarkus.platform</groupId>
         <artifactId>quarkus-amazon-services-bom</artifactId>
         <version>${quarkus.amazon.services.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${aws.sdk.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -82,11 +90,22 @@
       <artifactId>aws-lambda-java-events</artifactId>
       <version>3.11.3</version>
     </dependency>
-    <!-- AWS Secrets Manager -->
+    <!-- AWS SDK Dependencies -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>secretsmanager</artifactId>
-      <version>2.25.10</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>aws-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
