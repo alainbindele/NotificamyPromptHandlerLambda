@@ -21,7 +21,6 @@
         <lombok.version>1.18.36</lombok.version>
         <awssdk.version>2.29.23</awssdk.version>
         <quarkiverse.version>3.2.0</quarkiverse.version>
-        <besafegroup.common-lib.version>1.1.0-SNAPSHOT</besafegroup.common-lib.version>
     </properties>
 
     <dependencies>
