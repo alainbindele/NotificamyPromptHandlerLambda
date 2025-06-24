@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: AWS Lambda Function notificamy
+
+Resources:
+  PerformanceCheckLocalLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
+      Runtime: java17
+      CodeUri: ./target/function.zip
+      MemorySize: 1024
+      Timeout: 900
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+      Events:
+        ApiGatewayEvent:
+          Type: Api
+          Properties:
+            Path: /invoke
+            Method: post

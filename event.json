@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "messageId": "1",
+      "receiptHandle": "MessageReceiptHandle",
+      "body": "",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1635723749154",
+        "SenderId": "123456789012",
+        "ApproximateFirstReceiveTimestamp": "1635723749155"
+      },
+      "messageAttributes": {},
+      "md5OfBody": "e99a18c428cb38d5f260853678922e03",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:us-east-1:123456789012:MyQueue",
+      "awsRegion": "us-east-1"
+    }
+  ]
+}
