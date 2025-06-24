@@ -208,8 +208,10 @@ public class ChatGptAdapter implements AiServicePort {
                    - Ogni immagine deve avere attributo **`alt`** descrittivo.
                 
                 3. **Immagini** \s
-                   - Se rilevanti al tema, incorporare immagini via URL `https://` da fonti royalty‑free (Unsplash, Pexels, Wikimedia). \s
+                   - Se rilevanti al tema, incorporare immagini via URL `https://` da fonti royalty‑free (Unsplash, Pexels, Wikimedia,etc ). \s
                    - Se non sono disponibili immagini adatte, omettere la sezione `<img>`.
+                   - Se le immagini non sono raggiungibili non le inserire (404 o forbidden)
+                   - Le immagini devono essere ridimensionate nel formato header, ossia laghezzza pagina ed altezza massimo 300px
                 
                 4. **Contenuto** \s
                    - Linguaggio chiaro e sintetico. Paragrafi ≤ 80 parole. \s
