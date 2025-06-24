@@ -12,7 +12,7 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <quarkus.platform.version>3.17.0</quarkus.platform.version>
+        <quarkus.platform.version>3.6.4</quarkus.platform.version>
         <lombok.version>1.18.36</lombok.version>
         <awssdk.version>2.29.23</awssdk.version>
         <quarkiverse.version>3.2.0</quarkiverse.version>
