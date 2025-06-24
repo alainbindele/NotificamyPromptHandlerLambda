@@ -5,18 +5,21 @@ import com.notificamy.infrastructure.external.dto.ChatGptResponse;
 import com.notificamy.infrastructure.external.dto.OpenAiRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.jboss.logging.Logger;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 
 @ApplicationScoped
 public class ChatGptAdapter implements AiServicePort {
@@ -32,13 +35,15 @@ public class ChatGptAdapter implements AiServicePort {
     @ConfigProperty(name = "app.openai.api-url")
     String apiUrl;
     
-    private final Client client;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
     private String cachedApiKey;
     
     public ChatGptAdapter() {
-        this.client = ClientBuilder.newClient();
         this.objectMapper = new ObjectMapper();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
     }
     
     @Override
@@ -55,14 +60,20 @@ public class ChatGptAdapter implements AiServicePort {
             
             LOG.infof("Sending request to ChatGPT for prompt: %s", prompt);
             
-            Response response = client.target(apiUrl)
-                    .request(MediaType.APPLICATION_JSON)
+            String requestBody = objectMapper.writeValueAsString(request);
+            
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(apiUrl))
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
-                    .post(Entity.json(request));
+                    .timeout(Duration.ofSeconds(60))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
             
-            if (response.getStatus() == 200) {
-                ChatGptResponse chatGptResponse = response.readEntity(ChatGptResponse.class);
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
+                ChatGptResponse chatGptResponse = objectMapper.readValue(response.body(), ChatGptResponse.class);
                 
                 if (chatGptResponse.getChoices() != null && !chatGptResponse.getChoices().isEmpty()) {
                     String content = chatGptResponse.getChoices().get(0).getMessage().getContent();
@@ -73,7 +84,7 @@ public class ChatGptAdapter implements AiServicePort {
                     return "Sorry, I couldn't process your request at this time.";
                 }
             } else {
-                LOG.errorf("ChatGPT API error: %d - %s", response.getStatus(), response.readEntity(String.class));
+                LOG.errorf("ChatGPT API error: %d - %s", response.statusCode(), response.body());
                 return "Sorry, there was an error processing your request.";
             }
             

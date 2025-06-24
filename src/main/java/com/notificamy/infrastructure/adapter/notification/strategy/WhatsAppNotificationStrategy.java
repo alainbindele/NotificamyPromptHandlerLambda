@@ -4,11 +4,6 @@ import com.notificamy.domain.model.NotificationChannel;
 import com.notificamy.domain.model.NotificationRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -17,6 +12,11 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRespon
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Map;
 
 @ApplicationScoped
@@ -33,13 +33,15 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
     @ConfigProperty(name = "app.aws.secrets.api-keys")
     String apiKeysSecretName;
     
-    private final Client client;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
     private String cachedApiToken;
     
     public WhatsAppNotificationStrategy() {
-        this.client = ClientBuilder.newClient();
         this.objectMapper = new ObjectMapper();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
     }
     
     @Override
@@ -66,16 +68,22 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
                 "text", Map.of("body", message)
             );
             
-            Response response = client.target(whatsappApiUrl)
-                    .request(MediaType.APPLICATION_JSON)
+            String requestBody = objectMapper.writeValueAsString(payload);
+            
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(whatsappApiUrl))
                     .header("Authorization", "Bearer " + apiToken)
                     .header("Content-Type", "application/json")
-                    .post(Entity.json(payload));
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
             
-            if (response.getStatus() == 200) {
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
                 LOG.infof("WhatsApp message sent successfully to %s", phoneNumber);
             } else {
-                LOG.errorf("WhatsApp API error: %d - %s", response.getStatus(), response.readEntity(String.class));
+                LOG.errorf("WhatsApp API error: %d - %s", response.statusCode(), response.body());
             }
             
         } catch (Exception e) {

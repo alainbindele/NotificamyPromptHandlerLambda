@@ -3,13 +3,14 @@ package com.notificamy.infrastructure.adapter.notification.strategy;
 import com.notificamy.domain.model.NotificationChannel;
 import com.notificamy.domain.model.NotificationRequest;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.jboss.logging.Logger;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -18,10 +19,14 @@ public class SlackNotificationStrategy implements NotificationStrategy {
     
     private static final Logger LOG = Logger.getLogger(SlackNotificationStrategy.class);
     
-    private final Client client;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
     
     public SlackNotificationStrategy() {
-        this.client = ClientBuilder.newClient();
+        this.objectMapper = new ObjectMapper();
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build();
     }
     
     @Override
@@ -34,16 +39,21 @@ public class SlackNotificationStrategy implements NotificationStrategy {
         
         try {
             Map<String, Object> payload = buildSlackPayload(request);
+            String requestBody = objectMapper.writeValueAsString(payload);
             
-            Response response = client.target(webhookUrl)
-                    .request(MediaType.APPLICATION_JSON)
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(webhookUrl))
                     .header("Content-Type", "application/json")
-                    .post(Entity.json(payload));
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
             
-            if (response.getStatus() == 200) {
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
                 LOG.infof("Slack message sent successfully to user %s", request.getUser().getEmail());
             } else {
-                LOG.errorf("Slack webhook error: %d - %s", response.getStatus(), response.readEntity(String.class));
+                LOG.errorf("Slack webhook error: %d - %s", response.statusCode(), response.body());
             }
             
         } catch (Exception e) {
