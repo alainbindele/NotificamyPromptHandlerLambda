@@ -48,7 +48,7 @@ public class ChatGptAdapter implements AiServicePort {
     public String processPrompt(String prompt) {
         try {
             String apiKey = getOpenAiApiKey();
-            LOG.info("OpenaIAPIKEY"+"apiKey");
+            LOG.info("OpenaIAPIKEY"+apiKey);
             if (apiKey == null || apiKey.isEmpty()) {
                 LOG.error("OpenAI API key not found in secrets");
                 return "Sorry, the AI service is currently unavailable.";
