@@ -25,6 +25,9 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     @Override
     public void sendNotification(NotificationRequest request) {
         try {
+            LOG.infof("Sending email notification to %s for query %d", 
+                    request.getUser().getEmail(), request.getQueryId());
+            
             String subject = "Notificamy: Your AI-Generated Notification";
             String htmlBody = buildHtmlEmailBody(request);
             String textBody = buildTextEmailBody(request);
@@ -57,8 +60,10 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                     request.getUser().getEmail(), response.messageId());
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send email to %s", request.getUser().getEmail());
-            throw new RuntimeException("Failed to send email", e);
+            LOG.errorf(e, "Failed to send email to %s for query %d", 
+                    request.getUser().getEmail(), request.getQueryId());
+            // Non lanciamo l'eccezione per non bloccare altre notifiche
+            LOG.warn("Email notification failed but continuing with other channels");
         }
     }
     
