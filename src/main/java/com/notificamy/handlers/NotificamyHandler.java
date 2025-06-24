@@ -39,7 +39,7 @@ public class NotificamyHandler extends QuarkusStreamHandler implements RequestHa
 			log.info("Lambda Id: {}", context.getAwsRequestId());
 			log.info("Processing message: {}", msg.getBody());
 
-			log.info("Message processed successfully for txId={}", input.getTxId());
+			log.info("Message processed successfully ");
 
 		} catch (Exception e) {
 			log.error("An error occurred while processing the message", e);
