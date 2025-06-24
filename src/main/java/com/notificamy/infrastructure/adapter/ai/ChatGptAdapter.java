@@ -4,6 +4,7 @@ import com.notificamy.domain.port.AiServicePort;
 import com.notificamy.infrastructure.external.dto.ChatGptResponse;
 import com.notificamy.infrastructure.external.dto.OpenAiRequest;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
@@ -11,27 +12,44 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 
 @ApplicationScoped
 public class ChatGptAdapter implements AiServicePort {
     
     private static final Logger LOG = Logger.getLogger(ChatGptAdapter.class);
     
-    @ConfigProperty(name = "app.openai.api-key")
-    String apiKey;
+    @Inject
+    SecretsManagerClient secretsManagerClient;
+    
+    @ConfigProperty(name = "app.aws.secrets.api-keys")
+    String apiKeysSecretName;
     
     @ConfigProperty(name = "app.openai.api-url")
     String apiUrl;
     
     private final Client client;
+    private final ObjectMapper objectMapper;
+    private String cachedApiKey;
     
     public ChatGptAdapter() {
         this.client = ClientBuilder.newClient();
+        this.objectMapper = new ObjectMapper();
     }
     
     @Override
     public String processPrompt(String prompt) {
         try {
+            String apiKey = getOpenAiApiKey();
+            if (apiKey == null || apiKey.isEmpty()) {
+                LOG.error("OpenAI API key not found in secrets");
+                return "Sorry, the AI service is currently unavailable.";
+            }
+            
             String policy = buildPolicy();
             OpenAiRequest request = new OpenAiRequest(policy, prompt);
             
@@ -62,6 +80,31 @@ public class ChatGptAdapter implements AiServicePort {
         } catch (Exception e) {
             LOG.errorf(e, "Error calling ChatGPT API");
             return "Sorry, there was an error processing your request.";
+        }
+    }
+    
+    private String getOpenAiApiKey() {
+        if (cachedApiKey != null) {
+            return cachedApiKey;
+        }
+        
+        try {
+            GetSecretValueRequest secretRequest = GetSecretValueRequest.builder()
+                    .secretId(apiKeysSecretName)
+                    .build();
+            
+            GetSecretValueResponse secretResponse = secretsManagerClient.getSecretValue(secretRequest);
+            String secretString = secretResponse.secretString();
+            
+            JsonNode secretJson = objectMapper.readTree(secretString);
+            cachedApiKey = secretJson.get("OPENAI_API_KEY").asText();
+            
+            LOG.info("OpenAI API key retrieved from AWS Secrets Manager");
+            return cachedApiKey;
+            
+        } catch (Exception e) {
+            LOG.errorf(e, "Failed to retrieve OpenAI API key from AWS Secrets Manager");
+            return null;
         }
     }
     
