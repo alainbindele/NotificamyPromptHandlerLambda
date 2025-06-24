@@ -30,7 +30,7 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
     @ConfigProperty(name = "app.whatsapp.api-url")
     String whatsappApiUrl;
     
-    @ConfigProperty(name = "app.aws.secrets.api-keys")
+    @ConfigProperty(name = "app.aws.secrets.whatsapp.api.key")
     String apiKeysSecretName;
     
     private final ObjectMapper objectMapper;

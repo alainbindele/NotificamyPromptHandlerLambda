@@ -44,7 +44,9 @@ jobs:
               DB_URL=${{ secrets.DB_URL }},
               DB_USER=${{ secrets.DB_USER }},
               DB_PASSWORD=${{ secrets.DB_PASSWORD }},
-              AWS_SQS_QUEUE_URL=${{ secrets.AWS_SQS_QUEUE_URL }}}"
+              OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }},
+              AWS_SQS_QUEUE_URL=${{ secrets.AWS_SQS_QUEUE_URL }},
+          }"
 
       # Build dell'immagine Docker
       - name: Build Docker image
