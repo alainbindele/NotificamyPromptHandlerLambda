@@ -4,46 +4,65 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.notificamy.domain.service.NotificationService;
+import com.notificamy.infrastructure.external.dto.SqsMessage;
+import com.notificamy.infrastructure.mapper.SqsMessageMapper;
 import io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Objects;
+import org.jboss.logging.Logger;
 
 @RegisterForReflection
 @Slf4j
 public class NotificamyHandler extends QuarkusStreamHandler implements RequestHandler<SQSEvent, String> {
 
+	private static final Logger LOG = Logger.getLogger(NotificamyHandler.class);
+
 	@Inject
-	ObjectMapper objectMapper;
+	NotificationService notificationService;
+
+	@Inject
+	SqsMessageMapper sqsMessageMapper;
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	@Override
-	@Transactional
-	public String handleRequest(SQSEvent sqsEvent, Context context) {
+	public String handleRequest(SQSEvent event, Context context) {
+		LOG.infof("Processing SQS event with %d records", event.getRecords().size());
 
-		if (Objects.nonNull(sqsEvent) && !sqsEvent.getRecords().isEmpty()) {
-			for (SQSEvent.SQSMessage msg : sqsEvent.getRecords()) {
-				processMessage(msg, context);
+		int processedCount = 0;
+		int errorCount = 0;
+
+		for (SQSEvent.SQSMessage sqsMessage : event.getRecords()) {
+			try {
+				processMessage(sqsMessage);
+				processedCount++;
+			} catch (Exception e) {
+				LOG.errorf(e, "Error processing SQS message: %s", sqsMessage.getBody());
+				errorCount++;
 			}
-		} else {
-			log.info("No messages to process");
 		}
-		log.info("Processing complete.");
-		return "{\"statusCode\": \"OK\"}";
+
+		String result = String.format("Processed: %d, Errors: %d", processedCount, errorCount);
+		LOG.infof("Lambda execution completed: %s", result);
+		return result;
 	}
 
-	private void processMessage(SQSEvent.SQSMessage msg, Context context) {
-		try {
-			log.info("Lambda Id: {}", context.getAwsRequestId());
-			log.info("Processing message: {}", msg.getBody());
+	private void processMessage(SQSEvent.SQSMessage sqsMessage) throws Exception {
+		LOG.infof("Processing message: %s", sqsMessage.getBody());
 
-			log.info("Message processed successfully ");
+		// Parse SQS message using external DTO
+		SqsMessage message = objectMapper.readValue(sqsMessage.getBody(), SqsMessage.class);
+		LOG.infof("Parsed message: %s", message);
 
-		} catch (Exception e) {
-			log.error("An error occurred while processing the message", e);
-			throw new RuntimeException("Message processing failed", e);
-		}
+		// Extract domain values using mapper
+		Long queryId = sqsMessageMapper.extractQueryId(message);
+		String prompt = sqsMessageMapper.extractPrompt(message);
+
+		// Delegate to domain service
+		notificationService.processNotificationRequest(queryId, prompt);
+
+		LOG.infof("Message processed successfully for query ID: %d", queryId);
 	}
 }
