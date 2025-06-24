@@ -33,6 +33,9 @@ public class ChatGptAdapter implements AiServicePort {
     @ConfigProperty(name = "app.openai.api-url")
     String apiUrl;
     
+    @ConfigProperty(name = "app.openai.policy")
+    String chatGptPolicy;
+    
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
     private String cachedApiKey;
@@ -48,8 +51,6 @@ public class ChatGptAdapter implements AiServicePort {
     public String processPrompt(String prompt) {
         try {
             String apiKey = getOpenAiApiKey();
-            // Rimuovi questa riga hardcoded per sicurezza
-            // apiKey="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";
             
             LOG.infof("OpenAI API Key retrieved: %s", apiKey != null ? "***" + apiKey.substring(Math.max(0, apiKey.length() - 4)) : "null");
             
@@ -62,6 +63,7 @@ public class ChatGptAdapter implements AiServicePort {
             OpenAiRequest request = new OpenAiRequest(policy, prompt);
             
             LOG.infof("Sending request to ChatGPT for prompt: %s", prompt);
+            LOG.infof("Using policy: %s", policy.length() > 100 ? policy.substring(0, 100) + "..." : policy);
             
             String requestBody = objectMapper.writeValueAsString(request);
             LOG.debugf("Request body: %s", requestBody);
@@ -140,6 +142,18 @@ public class ChatGptAdapter implements AiServicePort {
     }
     
     private String buildPolicy() {
+        // Se la policy è configurata e non è il placeholder, usala
+        if (chatGptPolicy != null && !chatGptPolicy.equals("POLICY TEXT") && !chatGptPolicy.trim().isEmpty()) {
+            LOG.infof("Using custom ChatGPT policy from configuration");
+            return chatGptPolicy;
+        }
+        
+        // Altrimenti usa la policy di default
+        LOG.infof("Using default ChatGPT policy");
+        return getDefaultPolicy();
+    }
+    
+    private String getDefaultPolicy() {
         return """
                 You are an AI assistant for Notificamy, a smart notification service. 
                 Your role is to help users create intelligent notification rules based on their requests.
