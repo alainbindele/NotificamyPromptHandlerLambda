@@ -3,7 +3,6 @@ package com.notificamy.infrastructure.adapter.notification;
 import com.notificamy.domain.model.NotificationChannel;
 import com.notificamy.domain.model.NotificationRequest;
 import com.notificamy.domain.port.NotificationPort;
-import com.notificamy.infrastructure.adapter.notification.decorator.NotificationDecorator;
 import com.notificamy.infrastructure.adapter.notification.strategy.DiscordNotificationStrategy;
 import com.notificamy.infrastructure.adapter.notification.strategy.EmailNotificationStrategy;
 import com.notificamy.infrastructure.adapter.notification.strategy.SlackNotificationStrategy;
@@ -11,6 +10,9 @@ import com.notificamy.infrastructure.adapter.notification.strategy.WhatsAppNotif
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @ApplicationScoped
 public class NotificationAdapter implements NotificationPort {
@@ -34,39 +36,36 @@ public class NotificationAdapter implements NotificationPort {
         LOG.infof("Sending notifications for query %d through %d channels", 
                 request.getQueryId(), request.getChannels().size());
         
-        // Build decorator chain based on enabled channels
-        NotificationDecorator decorator = buildDecoratorChain(request);
-        
-        if (decorator != null) {
-            decorator.sendNotification(request);
-        } else {
-            LOG.warnf("No notification channels enabled for query %d", request.getQueryId());
-        }
-    }
-    
-    private NotificationDecorator buildDecoratorChain(NotificationRequest request) {
-        NotificationDecorator chain = null;
+        List<Exception> exceptions = new ArrayList<>();
+        int successCount = 0;
         
         for (NotificationChannel channel : request.getChannels()) {
-            NotificationDecorator strategy = getStrategyForChannel(channel);
-            if (strategy != null) {
-                if (chain == null) {
-                    chain = strategy;
-                } else {
-                    chain = new NotificationDecorator(strategy, chain);
-                }
+            try {
+                sendToChannel(channel, request);
+                successCount++;
+                LOG.infof("Successfully sent notification via %s for query %d", channel, request.getQueryId());
+            } catch (Exception e) {
+                LOG.errorf(e, "Failed to send notification via %s for query %d", channel, request.getQueryId());
+                exceptions.add(e);
             }
         }
         
-        return chain;
+        LOG.infof("Notification sending completed for query %d: %d successful, %d failed", 
+                request.getQueryId(), successCount, exceptions.size());
+        
+        // If all channels failed, throw an exception
+        if (successCount == 0 && !exceptions.isEmpty()) {
+            throw new RuntimeException("All notification channels failed", exceptions.get(0));
+        }
     }
     
-    private NotificationDecorator getStrategyForChannel(NotificationChannel channel) {
-        return switch (channel) {
-            case EMAIL -> new NotificationDecorator(emailStrategy, null);
-            case WHATSAPP -> new NotificationDecorator(whatsAppStrategy, null);
-            case SLACK -> new NotificationDecorator(slackStrategy, null);
-            case DISCORD -> new NotificationDecorator(discordStrategy, null);
-        };
+    private void sendToChannel(NotificationChannel channel, NotificationRequest request) {
+        switch (channel) {
+            case EMAIL -> emailStrategy.sendNotification(request);
+            case WHATSAPP -> whatsAppStrategy.sendNotification(request);
+            case SLACK -> slackStrategy.sendNotification(request);
+            case DISCORD -> discordStrategy.sendNotification(request);
+            default -> LOG.warnf("Unknown notification channel: %s", channel);
+        }
     }
 }
