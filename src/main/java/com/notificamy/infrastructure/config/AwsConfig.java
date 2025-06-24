@@ -4,9 +4,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.ses.SesClient;
+
+import java.time.Duration;
 
 @ApplicationScoped
 public class AwsConfig {
@@ -27,6 +30,9 @@ public class AwsConfig {
     @ApplicationScoped
     public SesClient sesClient() {
         return SesClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder()
+                        .socketTimeout(Duration.ofSeconds(30))           // tempo massimo per lettura
+                        .connectionTimeout(Duration.ofSeconds(10)))
                 .region(Region.of(awsRegion))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
