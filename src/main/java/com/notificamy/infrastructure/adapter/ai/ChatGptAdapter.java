@@ -60,6 +60,17 @@ public class ChatGptAdapter implements AiServicePort {
             }
             
             String policy = buildPolicy();
+            policy = "Fai parte di un servizio di notifica online. Il prompt che ricevi " +
+                    "è un prompt riguardante qualcosa di cui voler essere notificato" +
+                    "ES. i risultati di una partita di calcio" +
+                    "ES. le ultime notizie internazionali" +
+                    "Devi leggere il prompt, effettuare una ricerca sul web (se serve)" +
+                    "e restituire esclusivamente un file HTML+CSS con un contenuto che possa " +
+                    "essere presentato per email oppure discord, oppure whatsapp oppure slack" +
+                    "quindi deve essere chiaro e ben paragrafato se necessario, può contenere qualche commento" +
+                    "dentro l'html che possa essere utile all'utente." +
+                    "Può contenere link web delle risorse da cui sono prese le informazioni " +
+                    "(se presenti aggiungi infondo anche una bibliografia)";
             OpenAiRequest request = new OpenAiRequest(policy, prompt);
             
             LOG.infof("Sending request to ChatGPT for prompt: %s", prompt);
