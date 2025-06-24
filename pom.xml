@@ -68,8 +68,13 @@
             <artifactId>quarkus-amazon-sqs</artifactId>
             <version>${quarkiverse.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.amazonservices</groupId>
+            <artifactId>quarkus-amazon-ses</artifactId>
+            <version>${quarkiverse.version}</version>
+        </dependency>
 
-        <!-- AWS Java SDK ONLY if needed -->
+        <!-- AWS Lambda Events - Solo questa dipendenza AWS nativa è necessaria -->
         <dependency>
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-lambda-java-events</artifactId>
@@ -96,19 +101,7 @@
             <version>${mapstruct.version}</version>
             <scope>provided</scope>
         </dependency>
-
-        <dependency>
-            <groupId>io.quarkiverse.amazonservices</groupId>
-            <artifactId>quarkus-amazon-ses</artifactId>
-            <version>${quarkiverse.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>url-connection-client</artifactId>
-            <version>2.20.144</version> <!-- ✅ Versione compatibile -->
-        </dependency>
     </dependencies>
-
 
     <build>
         <resources>
