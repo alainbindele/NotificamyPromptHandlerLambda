@@ -16,6 +16,9 @@
         <lombok.version>1.18.36</lombok.version>
         <awssdk.version>2.29.23</awssdk.version>
         <quarkiverse.version>3.2.0</quarkiverse.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <quarkus.aws.platform.version>2.16.12.Final</quarkus.aws.platform.version>
+
     </properties>
 
     <dependencies>
@@ -82,6 +85,11 @@
             <version>${quarkiverse.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-amazon-ses</artifactId>
+            <version>${quarkus.aws.platform.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.quarkiverse.amazonservices</groupId>
             <artifactId>quarkus-amazon-sqs</artifactId>
             <version>${quarkiverse.version}</version>
@@ -95,6 +103,18 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sqs</artifactId>
             <version>${awssdk.version}</version>
+        </dependency>
+        <!-- MapStruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${mapstruct.version}</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
