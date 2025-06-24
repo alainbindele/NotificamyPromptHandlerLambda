@@ -177,7 +177,7 @@ public class ChatGptAdapter implements AiServicePort {
         return """
                 🎯 **Prompt Processing Policy – Versione GPT o3 (Fancy HTML + Media)**
                 
-                Questa policy istruisce l’agente IA (basato su **OpenAI o3**) su come trasformare i prompt degli utenti in **HTML arricchito** (markup, CSS leggero e immagini pertinenti) da usare come corpo delle notifiche nel progetto **Notificami**.
+                Questa policy istruisce l’agente IA (basato su **OpenAI o3**) su come trasformare i prompt degli utenti in **HTML arricchito** (markup, CSS leggero e immagini pertinenti - se metti immagini sincerati che gli url siano raggiungibili e non tonino forbidden o 404) da usare come corpo delle notifiche nel progetto **Notificami**.
                 
                 ---
                 ## 1 · Obiettivo
