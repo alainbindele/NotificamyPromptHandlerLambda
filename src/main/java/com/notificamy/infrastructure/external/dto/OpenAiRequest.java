@@ -8,9 +8,9 @@ public class OpenAiRequest {
     private Message[] messages;
     
     @JsonProperty("max_tokens")
-    private int maxTokens = 500;
+    private int maxTokens;
     
-    private double temperature = 0.7;
+    private double temperature;
 
     public static class Message {
         private String role;
@@ -28,11 +28,19 @@ public class OpenAiRequest {
         public void setContent(String content) { this.content = content; }
     }
 
-    public OpenAiRequest(String systemPrompt, String userPrompt) {
+    public OpenAiRequest(String systemPrompt, String userPrompt, int maxTokens, double temperature) {
         this.messages = new Message[]{
             new Message("system", systemPrompt),
             new Message("user", userPrompt)
         };
+        this.maxTokens = maxTokens;
+        this.temperature = temperature;
+    }
+
+    // Costruttore di compatibilità (deprecato)
+    @Deprecated
+    public OpenAiRequest(String systemPrompt, String userPrompt) {
+        this(systemPrompt, userPrompt, 2000, 0.7);
     }
 
     public String getModel() { return model; }
