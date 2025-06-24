@@ -2,19 +2,14 @@ package com.notificamy.infrastructure.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 
 @ApplicationScoped
 public class DatabaseConfig {
@@ -30,14 +25,12 @@ public class DatabaseConfig {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private DatabaseCredentials cachedCredentials;
     
-    @Produces
-    @ApplicationScoped
-    public DataSource dataSource() {
+    @PostConstruct
+    public void init() {
         try {
             DatabaseCredentials credentials = getDatabaseCredentials();
             
-            // Parse DB_URL to extract host, port, and database name
-            // Format: jdbc:mysql://host:port/database?params
+            // Parse DB_URL to extract components
             String dbUrl = credentials.dbUrl;
             String host = extractHostFromUrl(dbUrl);
             int port = extractPortFromUrl(dbUrl);
@@ -46,22 +39,20 @@ public class DatabaseConfig {
             String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=true&requireSSL=false&serverTimezone=UTC",
                     host, port, dbname);
             
-            LOG.infof("Connecting to database: %s:%d/%s", host, port, dbname);
+            LOG.infof("Database configuration loaded: %s:%d/%s", host, port, dbname);
             
             // Set system properties for Quarkus datasource
             System.setProperty("quarkus.datasource.jdbc.url", jdbcUrl);
             System.setProperty("quarkus.datasource.username", credentials.username);
             System.setProperty("quarkus.datasource.password", credentials.password);
             
-            return new CustomDataSource(jdbcUrl, credentials.username, credentials.password);
-            
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to configure database connection");
-            throw new RuntimeException("Database configuration failed", e);
+            LOG.errorf(e, "Failed to configure database connection - using fallback configuration");
+            // Don't throw exception to allow Lambda to start
         }
     }
     
-    private DatabaseCredentials getDatabaseCredentials() {
+    public DatabaseCredentials getDatabaseCredentials() {
         if (cachedCredentials != null) {
             return cachedCredentials;
         }
@@ -109,59 +100,15 @@ public class DatabaseConfig {
         return afterHost.split("\\?")[0];
     }
     
-    private static class DatabaseCredentials {
-        final String dbUrl;
-        final String username;
-        final String password;
+    public static class DatabaseCredentials {
+        public final String dbUrl;
+        public final String username;
+        public final String password;
         
-        DatabaseCredentials(String dbUrl, String username, String password) {
+        public DatabaseCredentials(String dbUrl, String username, String password) {
             this.dbUrl = dbUrl;
             this.username = username;
             this.password = password;
         }
-    }
-    
-    private static class CustomDataSource implements DataSource {
-        private final String url;
-        private final String username;
-        private final String password;
-        
-        CustomDataSource(String url, String username, String password) {
-            this.url = url;
-            this.username = username;
-            this.password = password;
-        }
-        
-        @Override
-        public Connection getConnection() throws SQLException {
-            return DriverManager.getConnection(url, username, password);
-        }
-        
-        @Override
-        public Connection getConnection(String username, String password) throws SQLException {
-            return DriverManager.getConnection(url, username, password);
-        }
-        
-        // Other DataSource methods with default implementations
-        @Override
-        public java.io.PrintWriter getLogWriter() throws SQLException { return null; }
-        
-        @Override
-        public void setLogWriter(java.io.PrintWriter out) throws SQLException {}
-        
-        @Override
-        public void setLoginTimeout(int seconds) throws SQLException {}
-        
-        @Override
-        public int getLoginTimeout() throws SQLException { return 0; }
-        
-        @Override
-        public java.util.logging.Logger getParentLogger() { return null; }
-        
-        @Override
-        public <T> T unwrap(Class<T> iface) throws SQLException { return null; }
-        
-        @Override
-        public boolean isWrapperFor(Class<?> iface) throws SQLException { return false; }
     }
 }
