@@ -27,7 +27,7 @@ public class ChatGptAdapter implements AiServicePort {
     @Inject
     SecretsManagerClient secretsManagerClient;
     
-    @ConfigProperty(name = "app.aws.secrets.openai.api.key")
+    @ConfigProperty(name = "app.aws.secrets.api-keys")
     String apiKeysSecretName;
     
     @ConfigProperty(name = "app.openai.api-url")
