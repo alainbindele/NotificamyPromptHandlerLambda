@@ -57,36 +57,13 @@ public class SmtpConfig {
             this.smtpAuth = secretJson.has("SMTP_AUTH") ? secretJson.get("SMTP_AUTH").asBoolean() : true;
             this.smtpStartTls = secretJson.has("SMTP_START_TLS") ? secretJson.get("SMTP_START_TLS").asBoolean() : true;
             
-            LOG.infof("SMTP configuration loaded successfully - Host: %s, Port: %d, From: %s", 
-                    smtpHost, smtpPort, fromEmail);
-            
-            // Configura le proprietà di sistema per Quarkus Mailer
-            configureQuarkusMailer();
+            LOG.infof("SMTP configuration loaded successfully - Host: %s, Port: %d, From: %s, Auth: %s, StartTLS: %s", 
+                    smtpHost, smtpPort, fromEmail, smtpAuth, smtpStartTls);
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to load SMTP configuration from AWS Secrets Manager");
             throw new RuntimeException("Failed to load SMTP configuration", e);
         }
-    }
-    
-    private void configureQuarkusMailer() {
-        // Configura le proprietà di sistema che Quarkus Mailer utilizzerà
-        System.setProperty("quarkus.mailer.host", smtpHost);
-        System.setProperty("quarkus.mailer.port", String.valueOf(smtpPort));
-        System.setProperty("quarkus.mailer.username", smtpUsername);
-        System.setProperty("quarkus.mailer.password", smtpPassword);
-        System.setProperty("quarkus.mailer.auth-methods", "DIGEST-MD5 CRAM-SHA256 CRAM-SHA1 CRAM-MD5 PLAIN LOGIN");
-        System.setProperty("quarkus.mailer.from", fromEmail);
-        
-        if (smtpAuth) {
-            System.setProperty("quarkus.mailer.login", "REQUIRED");
-        }
-        
-        if (smtpStartTls) {
-            System.setProperty("quarkus.mailer.start-tls", "REQUIRED");
-        }
-        
-        LOG.info("Quarkus Mailer system properties configured successfully");
     }
     
     // Getters per accesso alle configurazioni

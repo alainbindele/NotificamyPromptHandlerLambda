@@ -2,20 +2,20 @@ package com.notificamy.infrastructure.adapter.notification.strategy;
 
 import com.notificamy.domain.model.NotificationRequest;
 import com.notificamy.infrastructure.config.SmtpConfig;
-import io.quarkus.mailer.Mail;
-import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import jakarta.mail.*;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import java.util.Properties;
+
 @ApplicationScoped
 public class EmailNotificationStrategy implements NotificationStrategy {
     
     private static final Logger LOG = Logger.getLogger(EmailNotificationStrategy.class);
-    
-    @Inject
-    Mailer mailer;
     
     @Inject
     SmtpConfig smtpConfig;
@@ -31,15 +31,40 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             
             String subject = "Notificamy: Your AI-Generated Notification";
             String htmlBody = buildHtmlEmailBody(request);
-            String textBody = buildTextEmailBody(request);
             
-            // Crea l'email usando Quarkus Mailer
-            Mail mail = Mail.withHtml(request.getUser().getEmail(), subject, htmlBody)
-                    .setText(textBody)
-                    .setFrom(fromName + " <" + smtpConfig.getFromEmail() + ">");
+            // Configura le proprietà SMTP
+            Properties props = new Properties();
+            props.put("mail.smtp.host", smtpConfig.getSmtpHost());
+            props.put("mail.smtp.port", String.valueOf(smtpConfig.getSmtpPort()));
+            props.put("mail.smtp.auth", String.valueOf(smtpConfig.isSmtpAuth()));
+            props.put("mail.smtp.starttls.enable", String.valueOf(smtpConfig.isSmtpStartTls()));
+            props.put("mail.smtp.starttls.required", String.valueOf(smtpConfig.isSmtpStartTls()));
+            props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+            
+            LOG.infof("SMTP Configuration - Host: %s, Port: %d, Auth: %s, StartTLS: %s", 
+                    smtpConfig.getSmtpHost(), smtpConfig.getSmtpPort(), 
+                    smtpConfig.isSmtpAuth(), smtpConfig.isSmtpStartTls());
+            
+            // Crea la sessione SMTP
+            Session session = Session.getInstance(props, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(smtpConfig.getSmtpUsername(), smtpConfig.getSmtpPassword());
+                }
+            });
+            
+            // Abilita debug per troubleshooting
+            session.setDebug(true);
+            
+            // Crea il messaggio
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(smtpConfig.getFromEmail(), fromName));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(request.getUser().getEmail()));
+            message.setSubject(subject, "UTF-8");
+            message.setContent(htmlBody, "text/html; charset=UTF-8");
             
             // Invia l'email
-            mailer.send(mail);
+            Transport.send(message);
             
             LOG.infof("Email sent successfully to %s for query %d", 
                     request.getUser().getEmail(), request.getQueryId());
@@ -48,7 +73,7 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             LOG.errorf(e, "Failed to send email to %s for query %d", 
                     request.getUser().getEmail(), request.getQueryId());
             // Lanciamo l'eccezione per permettere al NotificationAdapter di gestirla
-            throw new RuntimeException("Failed to send email notification", e);
+            throw new RuntimeException("Failed to send email notification: " + e.getMessage(), e);
         }
     }
     
@@ -112,28 +137,5 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                 request.getUser().getName() != null ? request.getUser().getName() : "User", 
                 request.getPrompt(), 
                 request.getAiResponse().replace("<", "&lt;").replace(">", "&gt;"));
-    }
-    
-    private String buildTextEmailBody(NotificationRequest request) {
-        return String.format("""
-                Notificamy - Your AI-Powered Email Notification
-                
-                Hello %s!
-                
-                Your notification request has been processed by our AI assistant.
-                
-                Your Request:
-                "%s"
-                
-                AI Response:
-                %s
-                
-                Thank you for using Notificamy!
-                
-                © 2024 Notificamy. Revolutionizing notifications with AI.
-                """, 
-                request.getUser().getName() != null ? request.getUser().getName() : "User", 
-                request.getPrompt(), 
-                request.getAiResponse());
     }
 }

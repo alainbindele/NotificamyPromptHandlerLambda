@@ -60,10 +60,11 @@
             <artifactId>quarkus-narayana-jta</artifactId>
         </dependency>
 
-        <!-- SMTP Email Support -->
+        <!-- JavaMail API for SMTP -->
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-mailer</artifactId>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>jakarta.mail</artifactId>
+            <version>2.0.1</version>
         </dependency>
 
         <!-- AWS - Quarkiverse Amazon Services -->
