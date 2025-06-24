@@ -149,7 +149,7 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler</mainClass>
+                                    <mainClass>io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
