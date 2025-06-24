@@ -37,25 +37,40 @@ public class NotificationAdapter implements NotificationPort {
                 request.getQueryId(), request.getChannels().size());
         
         List<Exception> exceptions = new ArrayList<>();
-        int successCount = 0;
+        List<NotificationChannel> successfulChannels = new ArrayList<>();
+        List<NotificationChannel> failedChannels = new ArrayList<>();
         
         for (NotificationChannel channel : request.getChannels()) {
             try {
                 sendToChannel(channel, request);
-                successCount++;
+                successfulChannels.add(channel);
                 LOG.infof("Successfully sent notification via %s for query %d", channel, request.getQueryId());
             } catch (Exception e) {
-                LOG.errorf(e, "Failed to send notification via %s for query %d", channel, request.getQueryId());
+                failedChannels.add(channel);
                 exceptions.add(e);
+                LOG.errorf(e, "Failed to send notification via %s for query %d", channel, request.getQueryId());
             }
         }
         
         LOG.infof("Notification sending completed for query %d: %d successful, %d failed", 
-                request.getQueryId(), successCount, exceptions.size());
+                request.getQueryId(), successfulChannels.size(), failedChannels.size());
         
-        // If all channels failed, throw an exception
-        if (successCount == 0 && !exceptions.isEmpty()) {
-            throw new RuntimeException("All notification channels failed", exceptions.get(0));
+        // Se tutti i canali sono falliti, lanciamo un'eccezione
+        if (successfulChannels.isEmpty() && !failedChannels.isEmpty()) {
+            StringBuilder errorMessage = new StringBuilder("All notification channels failed: ");
+            for (int i = 0; i < failedChannels.size(); i++) {
+                errorMessage.append(failedChannels.get(i));
+                if (i < failedChannels.size() - 1) {
+                    errorMessage.append(", ");
+                }
+            }
+            throw new RuntimeException(errorMessage.toString(), exceptions.get(0));
+        }
+        
+        // Se alcuni canali sono falliti ma almeno uno è riuscito, logghiamo ma non lanciamo eccezione
+        if (!failedChannels.isEmpty()) {
+            LOG.warnf("Some notification channels failed for query %d: %s", 
+                    request.getQueryId(), failedChannels);
         }
     }
     
@@ -65,7 +80,10 @@ public class NotificationAdapter implements NotificationPort {
             case WHATSAPP -> whatsAppStrategy.sendNotification(request);
             case SLACK -> slackStrategy.sendNotification(request);
             case DISCORD -> discordStrategy.sendNotification(request);
-            default -> LOG.warnf("Unknown notification channel: %s", channel);
+            default -> {
+                LOG.warnf("Unknown notification channel: %s", channel);
+                throw new RuntimeException("Unknown notification channel: " + channel);
+            }
         }
     }
 }

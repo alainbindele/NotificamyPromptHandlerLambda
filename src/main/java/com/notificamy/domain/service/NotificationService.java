@@ -67,12 +67,15 @@ public class NotificationService {
             try {
                 notificationPort.sendNotification(notificationRequest);
                 
-                // For now, assume all channels were successful if no exception was thrown
-                // In a more sophisticated implementation, each strategy would return success/failure info
+                // Se arriviamo qui, significa che almeno un canale è riuscito
+                // Per ora assumiamo che tutti i canali siano riusciti se non c'è eccezione
+                // In futuro, il NotificationAdapter potrebbe restituire informazioni più dettagliate
                 successfulChannels.addAll(query.getEnabledChannels());
                 
             } catch (Exception e) {
                 LOG.errorf(e, "Error sending notifications for query %d", queryId);
+                
+                // Se c'è un'eccezione, significa che tutti i canali sono falliti
                 failedChannels.addAll(query.getEnabledChannels());
                 errorMessages.append("Notification sending failed: ").append(e.getMessage());
             }
@@ -93,15 +96,21 @@ public class NotificationService {
             
             // Update notification record with error status if it was created
             if (notificationRecord != null) {
-                notificationRecordPort.updateNotificationStatus(
-                        notificationRecord.getId(), 
-                        NotificationStatus.ERROR, 
-                        Set.of(), 
-                        "Processing failed: " + e.getMessage()
-                );
+                try {
+                    notificationRecordPort.updateNotificationStatus(
+                            notificationRecord.getId(), 
+                            NotificationStatus.ERROR, 
+                            Set.of(), 
+                            "Processing failed: " + e.getMessage()
+                    );
+                } catch (Exception updateException) {
+                    LOG.errorf(updateException, "Failed to update notification record %d with error status", 
+                            notificationRecord.getId());
+                }
             }
             
-            throw new RuntimeException("Failed to process notification request", e);
+            // Non rilanciamo l'eccezione per evitare che il Lambda fallisca completamente
+            LOG.errorf("Notification processing failed for query %d, but continuing execution", queryId);
         }
     }
     

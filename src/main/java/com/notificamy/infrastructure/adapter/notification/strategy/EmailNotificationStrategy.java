@@ -62,8 +62,8 @@ public class EmailNotificationStrategy implements NotificationStrategy {
         } catch (Exception e) {
             LOG.errorf(e, "Failed to send email to %s for query %d", 
                     request.getUser().getEmail(), request.getQueryId());
-            // Non lanciamo l'eccezione per non bloccare altre notifiche
-            LOG.warn("Email notification failed but continuing with other channels");
+            // Lanciamo l'eccezione per permettere al NotificationAdapter di gestirla
+            throw new RuntimeException("Failed to send email notification", e);
         }
     }
     
