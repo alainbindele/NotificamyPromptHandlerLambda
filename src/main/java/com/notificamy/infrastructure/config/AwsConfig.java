@@ -8,6 +8,7 @@ import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.sqs.SqsClient;
 
 import java.time.Duration;
 
@@ -36,6 +37,18 @@ public class AwsConfig {
                 .httpClientBuilder(UrlConnectionHttpClient.builder()
                         .socketTimeout(Duration.ofSeconds(60))           // Aumentato da 30 a 60 secondi
                         .connectionTimeout(Duration.ofSeconds(15)))      // Aumentato da 10 a 15 secondi
+                .region(Region.of(awsRegion))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+    
+    @Produces
+    @ApplicationScoped
+    public SqsClient sqsClient() {
+        return SqsClient.builder()
+                .httpClientBuilder(UrlConnectionHttpClient.builder()
+                        .socketTimeout(Duration.ofSeconds(60))
+                        .connectionTimeout(Duration.ofSeconds(15)))
                 .region(Region.of(awsRegion))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
