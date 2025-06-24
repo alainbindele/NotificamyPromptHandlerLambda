@@ -11,6 +11,7 @@ import com.notificamy.infrastructure.persistence.repository.QueryEntityRepositor
 import com.notificamy.infrastructure.persistence.repository.UserEntityRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
 @ApplicationScoped
 public class QueryRepositoryAdapter implements QueryRepositoryPort {
@@ -28,12 +29,14 @@ public class QueryRepositoryAdapter implements QueryRepositoryPort {
     UserMapper userMapper;
     
     @Override
+    @Transactional
     public Query findById(Long id) {
         QueryEntity entity = queryEntityRepository.findByIdWithUser(id);
         return entity != null ? queryMapper.toDomain(entity) : null;
     }
     
     @Override
+    @Transactional
     public User findUserById(Long userId) {
         UserEntity entity = userEntityRepository.findById(userId);
         return entity != null ? userMapper.toDomain(entity) : null;

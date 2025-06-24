@@ -8,6 +8,7 @@ import com.notificamy.domain.port.NotificationPort;
 import com.notificamy.domain.port.QueryRepositoryPort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 @ApplicationScoped
@@ -24,31 +25,38 @@ public class NotificationService {
     @Inject
     NotificationPort notificationPort;
     
+    @Transactional
     public void processNotificationRequest(Long queryId, String prompt) {
         LOG.infof("Processing notification request for query ID: %d", queryId);
         
-        // Fetch query and user
-        Query query = queryRepository.findById(queryId);
-        if (query == null) {
-            throw new RuntimeException("Query not found: " + queryId);
+        try {
+            // Fetch query and user
+            Query query = queryRepository.findById(queryId);
+            if (query == null) {
+                throw new RuntimeException("Query not found: " + queryId);
+            }
+            
+            User user = queryRepository.findUserById(query.getUserId());
+            if (user == null) {
+                throw new RuntimeException("User not found for query: " + queryId);
+            }
+            
+            // Process with AI
+            String aiResponse = aiService.processPrompt(prompt);
+            
+            // Create notification request
+            NotificationRequest notificationRequest = new NotificationRequest(
+                    queryId, prompt, user, query.getEnabledChannels(), aiResponse
+            );
+            
+            // Send notifications through all enabled channels
+            notificationPort.sendNotification(notificationRequest);
+            
+            LOG.infof("Notification request processed successfully for query ID: %d", queryId);
+            
+        } catch (Exception e) {
+            LOG.errorf(e, "Error processing notification request for query ID: %d", queryId);
+            throw new RuntimeException("Failed to process notification request", e);
         }
-        
-        User user = queryRepository.findUserById(query.getUserId());
-        if (user == null) {
-            throw new RuntimeException("User not found for query: " + queryId);
-        }
-        
-        // Process with AI
-        String aiResponse = aiService.processPrompt(prompt);
-        
-        // Create notification request
-        NotificationRequest notificationRequest = new NotificationRequest(
-                queryId, prompt, user, query.getEnabledChannels(), aiResponse
-        );
-        
-        // Send notifications through all enabled channels
-        notificationPort.sendNotification(notificationRequest);
-        
-        LOG.infof("Notification request processed successfully for query ID: %d", queryId);
     }
 }
