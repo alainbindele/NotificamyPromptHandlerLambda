@@ -1,6 +1,6 @@
 @echo off
 REM Esegui il comando Maven clean install
-mvn clean install && (
+mvn -X  -DskipTests -Dquarkus.package.type=uber-jar -Dnet.bytebuddy.experimental=true  clean install && (
     echo "Maven build completata con successo."
     sam build && (
         echo "SAM build completata con successo."

@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: AWS Lambda Function notificamy
 
 Resources:
-  PerformanceCheckLocalLambdaFunction:
+  NotificamyNotifierLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler::handleRequest
