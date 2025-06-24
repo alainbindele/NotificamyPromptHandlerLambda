@@ -48,8 +48,11 @@ public class ChatGptAdapter implements AiServicePort {
     public String processPrompt(String prompt) {
         try {
             String apiKey = getOpenAiApiKey();
-            apiKey="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";
-            LOG.info("OpenaIAPIKEY"+apiKey);
+            // Rimuovi questa riga hardcoded per sicurezza
+            // apiKey="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";
+            
+            LOG.infof("OpenAI API Key retrieved: %s", apiKey != null ? "***" + apiKey.substring(Math.max(0, apiKey.length() - 4)) : "null");
+            
             if (apiKey == null || apiKey.isEmpty()) {
                 LOG.error("OpenAI API key not found in secrets");
                 return "Sorry, the AI service is currently unavailable.";
@@ -61,6 +64,7 @@ public class ChatGptAdapter implements AiServicePort {
             LOG.infof("Sending request to ChatGPT for prompt: %s", prompt);
             
             String requestBody = objectMapper.writeValueAsString(request);
+            LOG.debugf("Request body: %s", requestBody);
             
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
@@ -72,15 +76,31 @@ public class ChatGptAdapter implements AiServicePort {
             
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             
+            LOG.infof("ChatGPT API response status: %d", response.statusCode());
+            LOG.debugf("ChatGPT API response body: %s", response.body());
+            
             if (response.statusCode() == 200) {
                 ChatGptResponse chatGptResponse = objectMapper.readValue(response.body(), ChatGptResponse.class);
                 
                 if (chatGptResponse.getChoices() != null && !chatGptResponse.getChoices().isEmpty()) {
-                    String content = chatGptResponse.getChoices().get(0).getMessage().getContent();
-                    LOG.infof("ChatGPT response received successfully");
-                    return content;
+                    ChatGptResponse.Message message = chatGptResponse.getChoices().get(0).getMessage();
+                    
+                    // Controlla se c'è un refusal (rifiuto da parte di OpenAI)
+                    if (message.getRefusal() != null && !message.getRefusal().isEmpty()) {
+                        LOG.warnf("OpenAI refused the request: %s", message.getRefusal());
+                        return "I'm sorry, but I cannot process this request due to content policy restrictions.";
+                    }
+                    
+                    String content = message.getContent();
+                    if (content != null && !content.isEmpty()) {
+                        LOG.infof("ChatGPT response received successfully");
+                        return content;
+                    } else {
+                        LOG.error("Empty content in ChatGPT response");
+                        return "Sorry, I couldn't generate a proper response at this time.";
+                    }
                 } else {
-                    LOG.error("Empty response from ChatGPT");
+                    LOG.error("Empty choices in ChatGPT response");
                     return "Sorry, I couldn't process your request at this time.";
                 }
             } else {

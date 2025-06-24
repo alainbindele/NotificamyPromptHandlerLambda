@@ -1,8 +1,10 @@
 package com.notificamy.infrastructure.external.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatGptResponse {
     
     private String id;
@@ -12,6 +14,7 @@ public class ChatGptResponse {
     private List<Choice> choices;
     private Usage usage;
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Choice {
         private int index;
         private Message message;
@@ -29,17 +32,23 @@ public class ChatGptResponse {
         public void setFinishReason(String finishReason) { this.finishReason = finishReason; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Message {
         private String role;
         private String content;
+        private String refusal; // Nuovo campo aggiunto da OpenAI
 
         public String getRole() { return role; }
         public void setRole(String role) { this.role = role; }
         
         public String getContent() { return content; }
         public void setContent(String content) { this.content = content; }
+        
+        public String getRefusal() { return refusal; }
+        public void setRefusal(String refusal) { this.refusal = refusal; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Usage {
         @JsonProperty("prompt_tokens")
         private int promptTokens;
