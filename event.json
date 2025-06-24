@@ -3,7 +3,7 @@
     {
       "messageId": "1",
       "receiptHandle": "MessageReceiptHandle",
-      "body": "",
+      "body": "{\"query_id\": 17,\"user_email\":\"alain.bindele@gmail.com\" ,\"user_discord_webhook\": \"SOME_WEBHOOK\",\"user_slack_webhook\": \"SOME_WEBHOOK\",\"user_phone\":\"SOME_PHONE\" , \"prompt\": \"notificami ogni 15 minuti dello stato della guerra in iraq\"}",
       "attributes": {
         "ApproximateReceiveCount": "1",
         "SentTimestamp": "1635723749154",

@@ -1,7 +1,16 @@
 package com.notificamy.infrastructure.external.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@ToString
 public class SqsMessage {
     
     @JsonProperty("query_id")
@@ -10,26 +19,15 @@ public class SqsMessage {
     @JsonProperty("prompt")
     private String prompt;
 
-    // Constructors
-    public SqsMessage() {}
+    @JsonProperty("user_email")
+    private String userEmail;
 
-    public SqsMessage(Long queryId, String prompt) {
-        this.queryId = queryId;
-        this.prompt = prompt;
-    }
+    @JsonProperty("user_discord_webhook")
+    private String userDiscordWebhook;
 
-    // Getters and Setters
-    public Long getQueryId() { return queryId; }
-    public void setQueryId(Long queryId) { this.queryId = queryId; }
+    @JsonProperty("user_slack_webhook")
+    private String userSlackWebhook;
 
-    public String getPrompt() { return prompt; }
-    public void setPrompt(String prompt) { this.prompt = prompt; }
-
-    @Override
-    public String toString() {
-        return "SqsMessage{" +
-                "queryId=" + queryId +
-                ", prompt='" + prompt + '\'' +
-                '}';
-    }
+    @JsonProperty("user_phone")
+    private String userPhone;
 }

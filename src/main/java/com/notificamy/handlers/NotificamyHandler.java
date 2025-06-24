@@ -30,8 +30,6 @@ public class NotificamyHandler extends QuarkusStreamHandler implements RequestHa
 	@Override
 	public String handleRequest(SQSEvent event, Context context) {
 		LOG.infof("Processing SQS event with %d records", event.getRecords().size());
-		return "OK";
-/*
 		int processedCount = 0;
 		int errorCount = 0;
 
@@ -64,6 +62,6 @@ public class NotificamyHandler extends QuarkusStreamHandler implements RequestHa
 		// Delegate to domain service
 		notificationService.processNotificationRequest(queryId, prompt);
 
-		LOG.infof("Message processed successfully for query ID: %d", queryId);*/
+		LOG.infof("Message processed successfully for query ID: %d", queryId);
 	}
 }
