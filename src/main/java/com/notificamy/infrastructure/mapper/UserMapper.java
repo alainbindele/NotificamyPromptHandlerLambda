@@ -16,6 +16,10 @@ public interface UserMapper {
     @Mapping(target = "channelConfigurations", source = ".", qualifiedByName = "buildChannelConfigurations")
     User toDomain(UserEntity entity);
     
+    @Mapping(target = "whatsappPhone", ignore = true)
+    @Mapping(target = "slackWebhook", ignore = true)
+    @Mapping(target = "discordWebhook", ignore = true)
+    @Mapping(target = "queries", ignore = true)
     UserEntity toEntity(User domain);
     
     @Named("buildChannelConfigurations")

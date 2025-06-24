@@ -2,7 +2,6 @@ package com.notificamy.handlers;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.notificamy.domain.service.NotificationService;
 import com.notificamy.infrastructure.external.dto.SqsMessage;
@@ -90,7 +89,7 @@ public class NotificamyHandler extends QuarkusStreamHandler implements RequestHa
 					.queueUrl(queueUrl)
 					.maxNumberOfMessages(10) // Massimo 10 messaggi per chiamata
 					.waitTimeSeconds(5) // Long polling per 5 secondi
-					.visibilityTimeoutSeconds(300) // 5 minuti di timeout per processare
+					.visibilityTimeout(300) // 5 minuti di timeout per processare (CORRETTO)
 					.messageAttributeNames("All")
 					.build();
 			

@@ -20,6 +20,7 @@ public interface QueryMapper {
     Query toDomain(QueryEntity entity);
     
     @Mapping(target = "enabledChannels", source = "enabledChannels", qualifiedByName = "channelSetToString")
+    @Mapping(target = "user", ignore = true)
     QueryEntity toEntity(Query domain);
     
     @Named("stringToChannelSet")
