@@ -36,10 +36,17 @@ public class DatabaseConfig {
         try {
             DatabaseCredentials credentials = getDatabaseCredentials();
             
-            String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=true&requireSSL=false&serverTimezone=UTC",
-                    credentials.host, credentials.port, credentials.dbname);
+            // Parse DB_URL to extract host, port, and database name
+            // Format: jdbc:mysql://host:port/database?params
+            String dbUrl = credentials.dbUrl;
+            String host = extractHostFromUrl(dbUrl);
+            int port = extractPortFromUrl(dbUrl);
+            String dbname = extractDatabaseFromUrl(dbUrl);
             
-            LOG.infof("Connecting to database: %s", credentials.host);
+            String jdbcUrl = String.format("jdbc:mysql://%s:%d/%s?useSSL=true&requireSSL=false&serverTimezone=UTC",
+                    host, port, dbname);
+            
+            LOG.infof("Connecting to database: %s:%d/%s", host, port, dbname);
             
             // Set system properties for Quarkus datasource
             System.setProperty("quarkus.datasource.jdbc.url", jdbcUrl);
@@ -70,11 +77,9 @@ public class DatabaseConfig {
             JsonNode secretJson = objectMapper.readTree(secretString);
             
             cachedCredentials = new DatabaseCredentials(
-                    secretJson.get("host").asText(),
-                    secretJson.get("port").asInt(),
-                    secretJson.get("dbname").asText(),
-                    secretJson.get("username").asText(),
-                    secretJson.get("password").asText()
+                    secretJson.get("DB_URL").asText(),
+                    secretJson.get("DB_USER").asText(),
+                    secretJson.get("DB_PASSWORD").asText()
             );
             
             LOG.info("Database credentials retrieved from AWS Secrets Manager");
@@ -86,17 +91,31 @@ public class DatabaseConfig {
         }
     }
     
+    private String extractHostFromUrl(String dbUrl) {
+        // Extract host from jdbc:mysql://host:port/database
+        String[] parts = dbUrl.split("://")[1].split("/")[0].split(":");
+        return parts[0];
+    }
+    
+    private int extractPortFromUrl(String dbUrl) {
+        // Extract port from jdbc:mysql://host:port/database
+        String[] parts = dbUrl.split("://")[1].split("/")[0].split(":");
+        return parts.length > 1 ? Integer.parseInt(parts[1]) : 3306;
+    }
+    
+    private String extractDatabaseFromUrl(String dbUrl) {
+        // Extract database name from jdbc:mysql://host:port/database?params
+        String afterHost = dbUrl.split("://")[1].split("/", 2)[1];
+        return afterHost.split("\\?")[0];
+    }
+    
     private static class DatabaseCredentials {
-        final String host;
-        final int port;
-        final String dbname;
+        final String dbUrl;
         final String username;
         final String password;
         
-        DatabaseCredentials(String host, int port, String dbname, String username, String password) {
-            this.host = host;
-            this.port = port;
-            this.dbname = dbname;
+        DatabaseCredentials(String dbUrl, String username, String password) {
+            this.dbUrl = dbUrl;
             this.username = username;
             this.password = password;
         }
