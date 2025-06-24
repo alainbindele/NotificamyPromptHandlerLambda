@@ -1,12 +1,13 @@
 package com.notificamy.infrastructure.adapter.notification.strategy;
 
 import com.notificamy.domain.model.NotificationRequest;
+import com.notificamy.infrastructure.config.SmtpConfig;
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.Mailer;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
-import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.*;
 
 @ApplicationScoped
 public class EmailNotificationStrategy implements NotificationStrategy {
@@ -14,12 +15,12 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     private static final Logger LOG = Logger.getLogger(EmailNotificationStrategy.class);
     
     @Inject
-    SesClient sesClient;
+    Mailer mailer;
     
-    @ConfigProperty(name = "app.aws.ses.from-email")
-    String fromEmail;
+    @Inject
+    SmtpConfig smtpConfig;
     
-    @ConfigProperty(name = "app.aws.ses.from-name")
+    @ConfigProperty(name = "app.email.from-name")
     String fromName;
     
     @Override
@@ -32,32 +33,16 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             String htmlBody = buildHtmlEmailBody(request);
             String textBody = buildTextEmailBody(request);
             
-            SendEmailRequest emailRequest = SendEmailRequest.builder()
-                    .source(fromName + " <" + fromEmail + ">")
-                    .destination(Destination.builder()
-                            .toAddresses(request.getUser().getEmail())
-                            .build())
-                    .message(Message.builder()
-                            .subject(Content.builder()
-                                    .charset("UTF-8")
-                                    .data(subject)
-                                    .build())
-                            .body(Body.builder()
-                                    .html(Content.builder()
-                                            .charset("UTF-8")
-                                            .data(htmlBody)
-                                            .build())
-                                    .text(Content.builder()
-                                            .charset("UTF-8")
-                                            .data(textBody)
-                                            .build())
-                                    .build())
-                            .build())
-                    .build();
+            // Crea l'email usando Quarkus Mailer
+            Mail mail = Mail.withHtml(request.getUser().getEmail(), subject, htmlBody)
+                    .setText(textBody)
+                    .setFrom(fromName + " <" + smtpConfig.getFromEmail() + ">");
             
-            SendEmailResponse response = sesClient.sendEmail(emailRequest);
-            LOG.infof("Email sent successfully to %s. Message ID: %s", 
-                    request.getUser().getEmail(), response.messageId());
+            // Invia l'email
+            mailer.send(mail);
+            
+            LOG.infof("Email sent successfully to %s for query %d", 
+                    request.getUser().getEmail(), request.getQueryId());
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to send email to %s for query %d", 
@@ -68,6 +53,14 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     }
     
     private String buildHtmlEmailBody(NotificationRequest request) {
+        // Se la risposta AI contiene già HTML, usala direttamente
+        if (request.getAiResponse().trim().startsWith("<") && request.getAiResponse().contains("</")) {
+            LOG.info("AI response contains HTML, using it directly");
+            return request.getAiResponse();
+        }
+        
+        // Altrimenti, crea un template HTML semplice
+        LOG.info("AI response is plain text, wrapping in HTML template");
         return String.format("""
                 <!DOCTYPE html>
                 <html>
@@ -75,20 +68,23 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                     <meta charset="UTF-8">
                     <title>Notificamy Notification</title>
                     <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-                        .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
-                        .prompt-box { background: white; padding: 15px; border-left: 4px solid #667eea; margin: 15px 0; }
-                        .response-box { background: white; padding: 15px; border-left: 4px solid #764ba2; margin: 15px 0; }
-                        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+                        body { font-family: "Segoe UI", Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background: #f4f4f8; }
+                        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 3px 8px rgba(0,0,0,.08); overflow: hidden; }
+                        .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px 20px; text-align: center; }
+                        .header h1 { margin: 0; font-size: 24px; }
+                        .content { padding: 30px 20px; }
+                        .prompt-box { background: #f8f9fa; padding: 20px; border-left: 4px solid #667eea; margin: 20px 0; border-radius: 4px; }
+                        .response-box { background: #f8f9fa; padding: 20px; border-left: 4px solid #764ba2; margin: 20px 0; border-radius: 4px; }
+                        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; background: #f8f9fa; }
+                        h2 { color: #333; margin-top: 0; }
+                        .ai-response { white-space: pre-wrap; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <div class="header">
-                            <h1>📧 Notificamy</h1>
-                            <p>Your AI-Powered Email Notification</p>
+                            <h1>🔔 Notificamy</h1>
+                            <p>Your AI-Powered Notification</p>
                         </div>
                         <div class="content">
                             <h2>Hello %s!</h2>
@@ -101,7 +97,7 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                             
                             <div class="response-box">
                                 <h3>🤖 AI Response:</h3>
-                                <p>%s</p>
+                                <div class="ai-response">%s</div>
                             </div>
                             
                             <p>Thank you for using Notificamy!</p>
@@ -115,7 +111,7 @@ public class EmailNotificationStrategy implements NotificationStrategy {
                 """, 
                 request.getUser().getName() != null ? request.getUser().getName() : "User", 
                 request.getPrompt(), 
-                request.getAiResponse().replace("\n", "<br>"));
+                request.getAiResponse().replace("<", "&lt;").replace(">", "&gt;"));
     }
     
     private String buildTextEmailBody(NotificationRequest request) {

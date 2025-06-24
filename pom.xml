@@ -60,6 +60,12 @@
             <artifactId>quarkus-narayana-jta</artifactId>
         </dependency>
 
+        <!-- SMTP Email Support -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-mailer</artifactId>
+        </dependency>
+
         <!-- AWS - Quarkiverse Amazon Services -->
         <dependency>
             <groupId>io.quarkiverse.amazonservices</groupId>
@@ -74,11 +80,6 @@
         <dependency>
             <groupId>io.quarkiverse.amazonservices</groupId>
             <artifactId>quarkus-amazon-sqs</artifactId>
-            <version>${quarkiverse.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkiverse.amazonservices</groupId>
-            <artifactId>quarkus-amazon-ses</artifactId>
             <version>${quarkiverse.version}</version>
         </dependency>
 
