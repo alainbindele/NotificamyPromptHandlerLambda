@@ -1,8 +1,13 @@
 package com.notificamy.domain.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.time.LocalDateTime;
 import java.util.Set;
 
+@Getter
+@AllArgsConstructor
 public class Query {
     
     private final Long id;
@@ -13,25 +18,4 @@ public class Query {
     private final LocalDateTime nextExecution;
     private final LocalDateTime createdAt;
     private final Set<NotificationChannel> enabledChannels;
-
-    public Query(Long id, Long userId, String prompt, Boolean isValid, String cronParams, 
-                LocalDateTime nextExecution, LocalDateTime createdAt, Set<NotificationChannel> enabledChannels) {
-        this.id = id;
-        this.userId = userId;
-        this.prompt = prompt;
-        this.isValid = isValid;
-        this.cronParams = cronParams;
-        this.nextExecution = nextExecution;
-        this.createdAt = createdAt;
-        this.enabledChannels = enabledChannels;
-    }
-
-    public Long getId() { return id; }
-    public Long getUserId() { return userId; }
-    public String getPrompt() { return prompt; }
-    public Boolean getIsValid() { return isValid; }
-    public String getCronParams() { return cronParams; }
-    public LocalDateTime getNextExecution() { return nextExecution; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public Set<NotificationChannel> getEnabledChannels() { return enabledChannels; }
 }

@@ -6,6 +6,7 @@ import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.Getter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -14,6 +15,7 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRespon
 
 @ApplicationScoped
 @Startup
+@Getter
 public class SmtpConfig {
     
     private static final Logger LOG = Logger.getLogger(SmtpConfig.class);
@@ -65,13 +67,4 @@ public class SmtpConfig {
             throw new RuntimeException("Failed to load SMTP configuration", e);
         }
     }
-    
-    // Getters per accesso alle configurazioni
-    public String getSmtpHost() { return smtpHost; }
-    public int getSmtpPort() { return smtpPort; }
-    public String getSmtpUsername() { return smtpUsername; }
-    public String getSmtpPassword() { return smtpPassword; }
-    public String getFromEmail() { return fromEmail; }
-    public boolean isSmtpAuth() { return smtpAuth; }
-    public boolean isSmtpStartTls() { return smtpStartTls; }
 }

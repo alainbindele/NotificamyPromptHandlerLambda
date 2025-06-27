@@ -2,8 +2,11 @@ package com.notificamy.infrastructure.external.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+
 import java.util.List;
 
+@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatGptResponse {
     
@@ -14,6 +17,7 @@ public class ChatGptResponse {
     private List<Choice> choices;
     private Usage usage;
 
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Choice {
         private int index;
@@ -21,33 +25,17 @@ public class ChatGptResponse {
         
         @JsonProperty("finish_reason")
         private String finishReason;
-
-        public int getIndex() { return index; }
-        public void setIndex(int index) { this.index = index; }
-        
-        public Message getMessage() { return message; }
-        public void setMessage(Message message) { this.message = message; }
-        
-        public String getFinishReason() { return finishReason; }
-        public void setFinishReason(String finishReason) { this.finishReason = finishReason; }
     }
 
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Message {
         private String role;
         private String content;
         private String refusal; // Nuovo campo aggiunto da OpenAI
-
-        public String getRole() { return role; }
-        public void setRole(String role) { this.role = role; }
-        
-        public String getContent() { return content; }
-        public void setContent(String content) { this.content = content; }
-        
-        public String getRefusal() { return refusal; }
-        public void setRefusal(String refusal) { this.refusal = refusal; }
     }
 
+    @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Usage {
         @JsonProperty("prompt_tokens")
@@ -58,33 +46,5 @@ public class ChatGptResponse {
         
         @JsonProperty("total_tokens")
         private int totalTokens;
-
-        public int getPromptTokens() { return promptTokens; }
-        public void setPromptTokens(int promptTokens) { this.promptTokens = promptTokens; }
-        
-        public int getCompletionTokens() { return completionTokens; }
-        public void setCompletionTokens(int completionTokens) { this.completionTokens = completionTokens; }
-        
-        public int getTotalTokens() { return totalTokens; }
-        public void setTotalTokens(int totalTokens) { this.totalTokens = totalTokens; }
     }
-
-    // Main getters and setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    
-    public String getObject() { return object; }
-    public void setObject(String object) { this.object = object; }
-    
-    public long getCreated() { return created; }
-    public void setCreated(long created) { this.created = created; }
-    
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
-    
-    public List<Choice> getChoices() { return choices; }
-    public void setChoices(List<Choice> choices) { this.choices = choices; }
-    
-    public Usage getUsage() { return usage; }
-    public void setUsage(Usage usage) { this.usage = usage; }
 }
