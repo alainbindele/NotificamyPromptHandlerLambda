@@ -186,13 +186,58 @@ public class ChatGptAdapter implements AiServicePort {
                 - Integrare **CSS embedded** per una visualizzazione elegante e coinvolgente.
                 - Cercare in tutti i modi di esaudire le richieste del prompt.
                 - **IMPORTANTE**: Per richieste condizionali (che richiedono verifica), 
-                includere il tag di commento`<!--<checked>true</checked>-->` SOLO se la condizione è soddisfatta.
+                includere il tag `<checked>true</checked>` SOLO se la condizione è soddisfatta.
                 
-                ## 2 · Controllo Condizionale
+                ## 2 · Controllo Condizionale Avanzato
+                
+                ### 2.1 · Controlli Semplici
                 Per prompt che richiedono verifica di condizioni specifiche:
                 - Se la condizione è **SODDISFATTA**: includere `<checked>true</checked>` nella risposta
                 - Se la condizione **NON è soddisfatta**: includere `<checked>false</checked>` o omettere il tag
-                - Esempi di condizioni: "avvisami quando Bitcoin supera $50000", "notificami se piove domani", "dimmi quando esce il nuovo iPhone"
+                - Esempi: "avvisami quando Bitcoin supera $50000", "notificami se piove domani"
+                
+                ### 2.2 · Controlli con Vincoli Temporali
+                Per prompt che combinano condizioni + vincoli temporali:
+                
+                **Esempio**: "Avvisami quando Bitcoin supera $50000 ma fallo la mattina alle 9"
+                - **Logica**: Controlla la condizione SOLO nell'orario specificato
+                - **Se è l'orario giusto E condizione soddisfatta**: `<checked>true</checked>`
+                - **Se NON è l'orario giusto**: `<checked>false</checked>` + messaggio "Controllo programmato per le 9:00"
+                - **Se è l'orario giusto MA condizione non soddisfatta**: `<checked>false</checked>` + stato attuale
+                
+                **Varianti supportate**:
+                - "Controllami ogni mattina alle 9 se..." → Controllo ricorrente quotidiano
+                - "Avvisami quando... ma solo tra le 9 e le 17" → Controllo in finestra temporale
+                - "Controllami ogni lunedì alle 9 se..." → Controllo ricorrente settimanale
+                - "Dimmi se... ma fallo solo nei giorni feriali" → Controllo con vincoli giorni
+                
+                ### 2.3 · Esempi di Controlli Temporali
+                
+                #### Controllo Bitcoin alle 9:00
+                ```html
+                <!-- Se è alle 9:00 E Bitcoin > $50000 -->
+                <checked>true</checked>
+                <div>🚀 Bitcoin Alert! Prezzo attuale: $52,340 (+4.2%)</div>
+                
+                <!-- Se è alle 9:00 MA Bitcoin < $50000 -->
+                <checked>false</checked>
+                <div>📊 Bitcoin Update: $47,230. Soglia $50,000 non ancora raggiunta.</div>
+                
+                <!-- Se NON è alle 9:00 -->
+                <checked>false</checked>
+                <div>⏰ Controllo programmato per le 9:00 del mattino. Prossimo check tra X ore.</div>
+                ```
+                
+                #### Controllo Meteo nei giorni feriali
+                ```html
+                <!-- Se è un giorno feriale E piove -->
+                <checked>true</checked>
+                <div>🌧️ Pioggia prevista oggi! Porta l'ombrello.</div>
+                
+                <!-- Se è weekend -->
+                <checked>false</checked>
+                <div>📅 Controllo meteo attivo solo nei giorni feriali. Buon weekend!</div>
+                ```
                 
                 ## 3 · Tipi di richieste supportate
                 | Categoria                | Esempi di prompt                                                |
@@ -202,6 +247,7 @@ public class ChatGptAdapter implements AiServicePort {
                 | **Meteo & Traffico**     | "Meteo Milano domani", "Traffico tangenziale Torino"             |
                 | **Riepiloghi ricorrenti**| "3 notizie tech ogni mattina", "Frase motivazionale quotidiana"  |
                 | **Controlli condizionali**| "Avvisami quando Bitcoin supera $50000", "Notificami se piove"  |
+                | **Controlli temporali**  | "Controllami alle 9 se Bitcoin > $50000", "Avvisami nei feriali se piove" |
                 
                 ## 4 · Tipi di richieste NON supportate
                 | Categoria                | Esempi di prompt                                                |
@@ -260,24 +306,64 @@ public class ChatGptAdapter implements AiServicePort {
                 
                 ## 7 · Esempi di output HTML
                 
-                ### 7.1 Controllo condizionale - Bitcoin
+                ### 7.1 Controllo condizionale - Bitcoin alle 9:00 (SODDISFATTO)
                 
                 <style>
                 body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
                 .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
                 h1{color:#f7931a;margin-top:0;}
                 .price{font-size:2em;font-weight:bold;color:#f7931a;}
+                .time{color:#666;font-size:0.9em;}
                 </style>
                 
                 <div class="card">
+                  <checked>true</checked>
                   <h1>🚀 Bitcoin Alert!</h1>
+                  <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
                   <p class="price">$52,340</p>
                   <p>Bitcoin ha superato la soglia di $50,000! Prezzo attuale: $52,340 (+4.2% nelle ultime 24h)</p>
-                  <checked>true</checked>
+                  <p><strong>Condizione soddisfatta:</strong> Bitcoin > $50,000 ✅</p>
                 </div>
                 
+                ### 7.2 Controllo condizionale - Bitcoin alle 9:00 (NON SODDISFATTO)
                 
-                ### 7.2 Barzelletta del giorno
+                <style>
+                body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
+                .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
+                h1{color:#666;margin-top:0;}
+                .price{font-size:2em;font-weight:bold;color:#666;}
+                .time{color:#666;font-size:0.9em;}
+                </style>
+                
+                <div class="card">
+                  <checked>false</checked>
+                  <h1>📊 Bitcoin Update</h1>
+                  <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
+                  <p class="price">$47,230</p>
+                  <p>Bitcoin è ancora sotto la soglia di $50,000. Prezzo attuale: $47,230 (-1.2% nelle ultime 24h)</p>
+                  <p><strong>Condizione non soddisfatta:</strong> Bitcoin < $50,000 ❌</p>
+                  <p>Prossimo controllo domani alle 9:00.</p>
+                </div>
+                
+                ### 7.3 Controllo fuori orario
+                
+                <style>
+                body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
+                .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
+                h1{color:#0066cc;margin-top:0;}
+                .time{color:#666;font-size:0.9em;}
+                </style>
+                
+                <div class="card">
+                  <checked>false</checked>
+                  <h1>⏰ Controllo Programmato</h1>
+                  <p class="time">Ora attuale: 14:30 - 27 Giugno 2025</p>
+                  <p>Il controllo Bitcoin è programmato per le <strong>9:00 del mattino</strong>.</p>
+                  <p>Prossimo controllo tra <strong>18 ore e 30 minuti</strong>.</p>
+                  <p>Condizione da verificare: Bitcoin > $50,000</p>
+                </div>
+                
+                ### 7.4 Barzelletta del giorno (normale)
                 
                 <style>
                 body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
@@ -286,11 +372,10 @@ public class ChatGptAdapter implements AiServicePort {
                 </style>
                 
                 <div class="card">
-                  <h1>Barzelletta del giorno</h1>
+                  <h1>😄 Barzelletta del giorno</h1>
                   <p>Perché il computer è andato dallo psicologo?</p>
                   <p>Perché aveva troppi <strong>byte</strong> di ansia!</p>
                 </div>
-                
                 
                 """;
     }

@@ -11,6 +11,8 @@ import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.DayOfWeek;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -96,6 +98,14 @@ public class NotificationService {
                 throw new RuntimeException("User not found for query: " + queryId);
             }
             
+            // For conditional queries (to_check = true), check temporal constraints first
+            if (query.requiresConditionalCheck()) {
+                if (!isWithinTemporalConstraints(query, now)) {
+                    LOG.infof("Query %d is outside temporal constraints, skipping conditional check", queryId);
+                    return;
+                }
+            }
+            
             // Process with AI (include language specification in prompt)
             String enhancedPrompt = buildLanguageSpecificPrompt(prompt, query.getLanguage());
             String aiResponse = aiService.processPrompt(enhancedPrompt);
@@ -107,6 +117,12 @@ public class NotificationService {
                     return;
                 }
                 LOG.infof("Conditional check passed for query %d, proceeding with notification", queryId);
+                
+                // For one-time conditional events, close the query after successful notification
+                if (isOneTimeConditionalEvent(query)) {
+                    LOG.infof("One-time conditional event completed for query %d, closing query", queryId);
+                    queryRepository.updateQueryClosed(queryId, true);
+                }
             }
             
             // Create notification request
@@ -170,6 +186,153 @@ public class NotificationService {
             // Non rilanciamo l'eccezione per evitare che il Lambda fallisca completamente
             LOG.errorf("Notification processing failed for query %d, but continuing execution", queryId);
         }
+    }
+    
+    /**
+     * Checks if the current time is within the temporal constraints for conditional queries
+     */
+    private boolean isWithinTemporalConstraints(Query query, LocalDateTime now) {
+        // If no cron parameters, no temporal constraints
+        if (query.getCronParams() == null || query.getCronParams().isEmpty()) {
+            return true;
+        }
+        
+        String cronParams = query.getCronParams();
+        LocalTime currentTime = now.toLocalTime();
+        DayOfWeek currentDay = now.getDayOfWeek();
+        
+        // Parse common cron patterns for temporal constraints
+        try {
+            String[] cronParts = cronParams.split("\\s+");
+            if (cronParts.length >= 5) {
+                String minute = cronParts[0];
+                String hour = cronParts[1];
+                String dayOfMonth = cronParts[2];
+                String month = cronParts[3];
+                String dayOfWeek = cronParts[4];
+                
+                // Check hour constraint
+                if (!hour.equals("*")) {
+                    if (hour.contains("-")) {
+                        // Range like "9-17"
+                        String[] hourRange = hour.split("-");
+                        int startHour = Integer.parseInt(hourRange[0]);
+                        int endHour = Integer.parseInt(hourRange[1]);
+                        int currentHour = currentTime.getHour();
+                        
+                        if (currentHour < startHour || currentHour > endHour) {
+                            LOG.infof("Current hour %d is outside range %d-%d", currentHour, startHour, endHour);
+                            return false;
+                        }
+                    } else {
+                        // Specific hour like "9"
+                        int targetHour = Integer.parseInt(hour);
+                        if (currentTime.getHour() != targetHour) {
+                            LOG.infof("Current hour %d does not match target hour %d", currentTime.getHour(), targetHour);
+                            return false;
+                        }
+                    }
+                }
+                
+                // Check day of week constraint (0 = Sunday, 1 = Monday, etc.)
+                if (!dayOfWeek.equals("*")) {
+                    if (dayOfWeek.contains(",")) {
+                        // Multiple days like "1,2,3,4,5" (weekdays)
+                        String[] days = dayOfWeek.split(",");
+                        boolean dayMatches = false;
+                        for (String day : days) {
+                            int targetDay = Integer.parseInt(day.trim());
+                            // Convert Java DayOfWeek to cron format (Monday=1 becomes 1, Sunday=7 becomes 0)
+                            int currentDayValue = currentDay.getValue() % 7; // Sunday becomes 0
+                            if (currentDayValue == targetDay) {
+                                dayMatches = true;
+                                break;
+                            }
+                        }
+                        if (!dayMatches) {
+                            LOG.infof("Current day %s does not match any target days %s", currentDay, dayOfWeek);
+                            return false;
+                        }
+                    } else {
+                        // Single day
+                        int targetDay = Integer.parseInt(dayOfWeek);
+                        int currentDayValue = currentDay.getValue() % 7; // Sunday becomes 0
+                        if (currentDayValue != targetDay) {
+                            LOG.infof("Current day %s does not match target day %d", currentDay, targetDay);
+                            return false;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to parse cron parameters: %s, allowing execution", cronParams);
+            return true; // If we can't parse, allow execution
+        }
+        
+        LOG.infof("Temporal constraints satisfied for query %d", query.getId());
+        return true;
+    }
+    
+    /**
+     * Determines if this is a one-time conditional event that should close the query after success
+     */
+    private boolean isOneTimeConditionalEvent(Query query) {
+        // If it's not a recurring cron job and it's a conditional check, it's likely one-time
+        if (Boolean.TRUE.equals(query.getToCheck()) && !Boolean.TRUE.equals(query.getCron())) {
+            return true;
+        }
+        
+        // Check for specific patterns in the prompt that indicate one-time events
+        String prompt = query.getPrompt().toLowerCase();
+        
+        // Patterns that suggest one-time events
+        String[] oneTimePatterns = {
+            "avvisami quando",
+            "dimmi quando",
+            "notificami quando",
+            "alert me when",
+            "notify me when",
+            "tell me when"
+        };
+        
+        for (String pattern : oneTimePatterns) {
+            if (prompt.contains(pattern)) {
+                // But exclude patterns that suggest recurring checks
+                String[] recurringPatterns = {
+                    "ogni giorno",
+                    "ogni mattina",
+                    "ogni sera",
+                    "ogni settimana",
+                    "ogni lunedì",
+                    "ogni martedì",
+                    "ogni mercoledì",
+                    "ogni giovedì",
+                    "ogni venerdì",
+                    "ogni sabato",
+                    "ogni domenica",
+                    "daily",
+                    "every day",
+                    "every morning",
+                    "every evening",
+                    "every week"
+                };
+                
+                boolean isRecurring = false;
+                for (String recurringPattern : recurringPatterns) {
+                    if (prompt.contains(recurringPattern)) {
+                        isRecurring = true;
+                        break;
+                    }
+                }
+                
+                if (!isRecurring) {
+                    LOG.infof("Detected one-time conditional event pattern: %s", pattern);
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     /**
