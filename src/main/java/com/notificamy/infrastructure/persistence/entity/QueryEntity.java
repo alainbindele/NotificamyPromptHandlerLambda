@@ -32,9 +32,6 @@ public class QueryEntity {
     @Column(name = "next_execution")
     private LocalDateTime nextExecution;
     
-    @Column(name = "specific_datetime")
-    private LocalDateTime specificDatetime;
-    
     @Column(name = "closed")
     private Boolean closed = false;
     

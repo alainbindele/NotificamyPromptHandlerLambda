@@ -16,7 +16,6 @@ public class Query {
     private final Boolean isValid;
     private final String cronParams;
     private final LocalDateTime nextExecution;
-    private final LocalDateTime specificDatetime;
     private final Boolean closed;
     private final LocalDateTime createdAt;
     private final Set<NotificationChannel> enabledChannels;
