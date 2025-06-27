@@ -35,13 +35,11 @@ public interface QueryMapper {
             return channelNames.stream()
                     .map(channelName -> {
                         try {
-                            // Handle WHATSAPP vs WWHATSAPP mapping
-                            if ("WWHATSAPP".equals(channelName)) {
-                                return NotificationChannel.WHATSAPP;
-                            }
+                            // Direct mapping - WHATSAPP should work correctly
                             return NotificationChannel.valueOf(channelName);
                         } catch (IllegalArgumentException e) {
-                            // Skip invalid channel names
+                            // Skip invalid channel names and log warning
+                            System.err.println("Warning: Invalid channel name '" + channelName + "', skipping");
                             return null;
                         }
                     })
