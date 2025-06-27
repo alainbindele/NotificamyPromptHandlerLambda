@@ -186,7 +186,7 @@ public class ChatGptAdapter implements AiServicePort {
                 - Integrare **CSS embedded** per una visualizzazione elegante e coinvolgente.
                 - Cercare in tutti i modi di esaudire le richieste del prompt.
                 - **IMPORTANTE**: Per richieste condizionali (che richiedono verifica), 
-                includere il tag `<checked>true</checked>` SOLO se la condizione è soddisfatta.
+                includere il tag di commento`<!--<checked>true</checked>-->` SOLO se la condizione è soddisfatta.
                 
                 ## 2 · Controllo Condizionale
                 Per prompt che richiedono verifica di condizioni specifiche:
