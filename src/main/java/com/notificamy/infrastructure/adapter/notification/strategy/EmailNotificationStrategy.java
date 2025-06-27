@@ -1,6 +1,6 @@
 package com.notificamy.infrastructure.adapter.notification.strategy;
 
-import com.notificamy.domain.model.NotificationRequest;
+import  com.notificamy.domain.model.NotificationRequest;
 import com.notificamy.infrastructure.config.SmtpConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
