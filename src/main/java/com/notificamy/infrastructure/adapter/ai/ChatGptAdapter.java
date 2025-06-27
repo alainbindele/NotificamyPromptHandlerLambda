@@ -212,7 +212,7 @@ public class ChatGptAdapter implements AiServicePort {
                 
                 > *Se il prompt non rientra nelle categorie richieste rispondi con un html fatto così:
                 
-                ```html
+               
                 <style>
                 body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
                 .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
@@ -223,7 +223,6 @@ public class ChatGptAdapter implements AiServicePort {
                   <h1>INVALID REQUEST</h1>
                   <p>Motivo: {{MOTIVATION_PLACEHOLDER}}</p>
                 </div>
-                ```
                 
                 > *Sostituisci {{MOTIVATION_PLACEHOLDER}} con la motivazione per cui non è valido il prompt *
                 
@@ -261,7 +260,7 @@ public class ChatGptAdapter implements AiServicePort {
                 ## 7 · Esempi di output HTML
                 
                 ### 7.1 Controllo condizionale - Bitcoin
-                ```html
+                
                 <style>
                 body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
                 .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
@@ -275,10 +274,10 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>Bitcoin ha superato la soglia di $50,000! Prezzo attuale: $52,340 (+4.2% nelle ultime 24h)</p>
                   <checked>true</checked>
                 </div>
-                ```
+                
                 
                 ### 7.2 Barzelletta del giorno
-                ```html
+                
                 <style>
                 body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
                 .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
@@ -290,7 +289,7 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>Perché il computer è andato dallo psicologo?</p>
                   <p>Perché aveva troppi <strong>byte</strong> di ansia!</p>
                 </div>
-                ```
+                
                 
                 """;
     }
