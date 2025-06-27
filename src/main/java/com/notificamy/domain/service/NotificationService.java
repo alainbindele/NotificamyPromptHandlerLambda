@@ -51,7 +51,7 @@ public class NotificationService {
             }
             
             LocalDateTime now = LocalDateTime.now();
-            boolean queryUpdated = false;
+            boolean shouldCloseAfterProcessing = false;
             
             // ✅ PRIORITÀ 1: Controlla se la query è chiusa (se closed=1, non inviare mai)
             if (Boolean.TRUE.equals(query.getClosed())) {
@@ -59,29 +59,28 @@ public class NotificationService {
                 return;
             }
             
-            // ✅ PRIORITÀ 2: Controlla vincoli temporali (valid_from e valid_to)
-            if (!query.isWithinValidityPeriod()) {
-                LOG.infof("Query %d is outside validity period (from: %s, to: %s), closing query and skipping notification", 
-                        queryId, query.getValidFrom(), query.getValidTo());
-                queryRepository.updateQueryClosed(queryId, true);
-                return;
-            }
-            
-            // ✅ PRIORITÀ 3: Se valid_to è nel passato, chiudi la query
+            // ✅ PRIORITÀ 2: Se valid_to è nel passato, chiudi la query e non inviare
             if (query.getValidTo() != null && now.isAfter(query.getValidTo())) {
-                LOG.infof("Query %d is beyond valid_to period (%s), closing it", 
+                LOG.infof("Query %d is beyond valid_to period (%s), closing it and skipping notification", 
                         queryId, query.getValidTo());
                 queryRepository.updateQueryClosed(queryId, true);
                 return;
             }
             
-            // ✅ PRIORITÀ 4: Se è date_specific e next_execution è nel passato, chiudi la query
+            // ✅ PRIORITÀ 3: Controlla vincoli temporali (valid_from e valid_to)
+            if (!query.isWithinValidityPeriod()) {
+                LOG.infof("Query %d is outside validity period (from: %s, to: %s), skipping notification", 
+                        queryId, query.getValidFrom(), query.getValidTo());
+                return;
+            }
+            
+            // ✅ PRIORITÀ 4: Se è date_specific e next_execution è nel passato, INVIA MAIL e poi chiudi
             if (Boolean.TRUE.equals(query.getDateSpecific()) && query.getNextExecution() != null) {
                 if (query.getNextExecution().isBefore(now)) {
-                    LOG.infof("Date-specific query %d has expired (next_execution: %s), closing it", 
+                    LOG.infof("Date-specific query %d has expired (next_execution: %s), will send notification and then close it", 
                             queryId, query.getNextExecution());
-                    queryRepository.updateQueryClosed(queryId, true);
-                    return;
+                    shouldCloseAfterProcessing = true;
+                    // Continua con l'invio della notifica
                 }
             }
             
@@ -97,10 +96,8 @@ public class NotificationService {
             }
             
             // ✅ LOGICA PRINCIPALE: Se next_execution è nel passato, ignora i vincoli cron
-            boolean shouldProcessConditionalCheck = true;
-            
             if (query.getNextExecution() != null && query.getNextExecution().isBefore(now)) {
-                LOG.infof("Query %d has next_execution in the past (%s), ignoring cron constraints", 
+                LOG.infof("Query %d has next_execution in the past (%s), ignoring cron constraints and processing immediately", 
                         queryId, query.getNextExecution());
                 // Procedi direttamente senza controllare vincoli temporali cron
             } else {
@@ -121,14 +118,21 @@ public class NotificationService {
             if (query.requiresConditionalCheck()) {
                 if (!shouldSendConditionalNotification(aiResponse)) {
                     LOG.infof("Conditional check failed for query %d, not sending notification", queryId);
+                    
+                    // Se dovevamo chiudere dopo il processing (date_specific scaduta), chiudiamo comunque
+                    if (shouldCloseAfterProcessing) {
+                        LOG.infof("Closing date-specific query %d even though condition was not met", queryId);
+                        queryRepository.updateQueryClosed(queryId, true);
+                    }
+                    
                     return;
                 }
                 LOG.infof("Conditional check passed for query %d, proceeding with notification", queryId);
                 
                 // For one-time conditional events, close the query after successful notification
                 if (isOneTimeConditionalEvent(query)) {
-                    LOG.infof("One-time conditional event completed for query %d, closing query", queryId);
-                    queryRepository.updateQueryClosed(queryId, true);
+                    LOG.infof("One-time conditional event completed for query %d, will close query after notification", queryId);
+                    shouldCloseAfterProcessing = true;
                 }
             }
             
@@ -169,6 +173,12 @@ public class NotificationService {
                     successfulChannels, 
                     errorMessages.length() > 0 ? errorMessages.toString() : null
             );
+            
+            // ✅ Chiudi la query se necessario (DOPO aver inviato la notifica)
+            if (shouldCloseAfterProcessing) {
+                LOG.infof("Closing query %d after successful processing", queryId);
+                queryRepository.updateQueryClosed(queryId, true);
+            }
             
             LOG.infof("Notification request processed for query ID: %d with status: %s", queryId, finalStatus);
             
