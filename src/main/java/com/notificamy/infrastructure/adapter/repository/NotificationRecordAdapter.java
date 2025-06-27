@@ -37,20 +37,21 @@ public class NotificationRecordAdapter implements NotificationRecordPort {
     @Transactional
     public NotificationRecord createNotificationRecord(NotificationRequest request) {
         try {
-            NotificationEntity entity = new NotificationEntity();
-            entity.setUserId(request.getUser().getId());
-            entity.setQueryId(request.getQueryId());
-            entity.setStatus(NotificationStatus.PENDING.name());
-            entity.setSubject("Notificamy: Your AI-Generated Notification");
-            entity.setContent(request.getAiResponse());
-            entity.setSentAt(LocalDateTime.now());
-            
             // Serialize channels to JSON
             List<String> channelNames = request.getChannels().stream()
                     .map(NotificationChannel::name)
                     .collect(Collectors.toList());
-            entity.setChannelsAttempted(objectMapper.writeValueAsString(channelNames));
-            entity.setChannelsSuccessful("[]"); // Initially empty
+            
+            NotificationEntity entity = NotificationEntity.builder()
+                    .userId(request.getUser().getId())
+                    .queryId(request.getQueryId())
+                    .status(NotificationStatus.PENDING.name())
+                    .subject("Notificamy: Your AI-Generated Notification")
+                    .content(request.getAiResponse())
+                    .sentAt(LocalDateTime.now())
+                    .channelsAttempted(objectMapper.writeValueAsString(channelNames))
+                    .channelsSuccessful("[]") // Initially empty
+                    .build();
             
             notificationRepository.persist(entity);
             

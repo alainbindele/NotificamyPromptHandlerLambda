@@ -1,6 +1,8 @@
 package com.notificamy.infrastructure.persistence.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,6 +12,8 @@ import java.time.LocalDateTime;
 @Table(name = "notifications")
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class NotificationEntity {
     
     @Id
@@ -45,6 +49,7 @@ public class NotificationEntity {
     private String errorMessage;
     
     @Column(name = "retry_count")
+    @Builder.Default
     private Integer retryCount = 0;
     
     @Column(name = "created_at")
@@ -52,11 +57,16 @@ public class NotificationEntity {
     
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-
-    // Constructor with initialization
-    public NotificationEntity() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = now;
+        }
     }
     
     @PreUpdate
