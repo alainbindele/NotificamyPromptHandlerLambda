@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -45,6 +46,22 @@ public class NotificationService {
             Query query = queryRepository.findById(queryId);
             if (query == null) {
                 throw new RuntimeException("Query not found: " + queryId);
+            }
+            
+            // Check if date-specific query has expired and close it if needed
+            if (Boolean.TRUE.equals(query.getDateSpecific()) && query.getNextExecution() != null) {
+                LocalDateTime now = LocalDateTime.now();
+                if (query.getNextExecution().isBefore(now)) {
+                    LOG.infof("Date-specific query %d has expired (next_execution: %s), closing it", 
+                            queryId, query.getNextExecution());
+                    queryRepository.updateQueryClosed(queryId, true);
+                    
+                    // Refresh the query to get updated status
+                    query = queryRepository.findById(queryId);
+                    if (query == null) {
+                        throw new RuntimeException("Query not found after update: " + queryId);
+                    }
+                }
             }
             
             // Check if query is active
