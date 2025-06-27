@@ -48,19 +48,32 @@ public class NotificationService {
                 throw new RuntimeException("Query not found: " + queryId);
             }
             
+            LocalDateTime now = LocalDateTime.now();
+            boolean queryUpdated = false;
+            
             // Check if date-specific query has expired and close it if needed
             if (Boolean.TRUE.equals(query.getDateSpecific()) && query.getNextExecution() != null) {
-                LocalDateTime now = LocalDateTime.now();
                 if (query.getNextExecution().isBefore(now)) {
                     LOG.infof("Date-specific query %d has expired (next_execution: %s), closing it", 
                             queryId, query.getNextExecution());
                     queryRepository.updateQueryClosed(queryId, true);
-                    
-                    // Refresh the query to get updated status
-                    query = queryRepository.findById(queryId);
-                    if (query == null) {
-                        throw new RuntimeException("Query not found after update: " + queryId);
-                    }
+                    queryUpdated = true;
+                }
+            }
+            
+            // Check if query is beyond valid_to period and close it if needed
+            if (query.getValidTo() != null && now.isAfter(query.getValidTo())) {
+                LOG.infof("Query %d is beyond valid_to period (%s), closing it", 
+                        queryId, query.getValidTo());
+                queryRepository.updateQueryClosed(queryId, true);
+                queryUpdated = true;
+            }
+            
+            // Refresh the query if it was updated
+            if (queryUpdated) {
+                query = queryRepository.findById(queryId);
+                if (query == null) {
+                    throw new RuntimeException("Query not found after update: " + queryId);
                 }
             }
             
