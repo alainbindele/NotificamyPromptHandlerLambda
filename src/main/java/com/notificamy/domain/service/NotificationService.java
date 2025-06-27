@@ -12,11 +12,15 @@ import org.jboss.logging.Logger;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class NotificationService {
     
     private static final Logger LOG = Logger.getLogger(NotificationService.class);
+    
+    // Pattern to match <checked>true</checked> tag in AI response
+    private static final Pattern CHECKED_TRUE_PATTERN = Pattern.compile("<checked>\\s*true\\s*</checked>", Pattern.CASE_INSENSITIVE);
     
     @Inject
     QueryRepositoryPort queryRepository;
@@ -43,13 +47,37 @@ public class NotificationService {
                 throw new RuntimeException("Query not found: " + queryId);
             }
             
+            // Check if query is active
+            if (!query.isActive()) {
+                LOG.infof("Query %d is not active (valid: %s, closed: %s), skipping notification", 
+                        queryId, query.getIsValid(), query.getClosed());
+                return;
+            }
+            
+            // Check validity period
+            if (!query.isWithinValidityPeriod()) {
+                LOG.infof("Query %d is outside validity period (from: %s, to: %s), skipping notification", 
+                        queryId, query.getValidFrom(), query.getValidTo());
+                return;
+            }
+            
             User user = queryRepository.findUserById(query.getUserId());
             if (user == null) {
                 throw new RuntimeException("User not found for query: " + queryId);
             }
             
-            // Process with AI
-            String aiResponse = aiService.processPrompt(prompt);
+            // Process with AI (include language specification in prompt)
+            String enhancedPrompt = buildLanguageSpecificPrompt(prompt, query.getLanguage());
+            String aiResponse = aiService.processPrompt(enhancedPrompt);
+            
+            // For conditional queries (to_check = true), check if notification should be sent
+            if (query.requiresConditionalCheck()) {
+                if (!shouldSendConditionalNotification(aiResponse)) {
+                    LOG.infof("Conditional check failed for query %d, not sending notification", queryId);
+                    return;
+                }
+                LOG.infof("Conditional check passed for query %d, proceeding with notification", queryId);
+            }
             
             // Create notification request
             NotificationRequest notificationRequest = new NotificationRequest(
@@ -112,6 +140,38 @@ public class NotificationService {
             // Non rilanciamo l'eccezione per evitare che il Lambda fallisca completamente
             LOG.errorf("Notification processing failed for query %d, but continuing execution", queryId);
         }
+    }
+    
+    /**
+     * Builds a language-specific prompt by appending language instruction to the original prompt
+     */
+    private String buildLanguageSpecificPrompt(String originalPrompt, String language) {
+        if (language == null || language.isEmpty()) {
+            return originalPrompt;
+        }
+        
+        String languageInstruction = switch (language.toLowerCase()) {
+            case "it", "italian" -> "Rispondi specificatamente in italiano.";
+            case "en", "english" -> "Respond specifically in English.";
+            case "es", "spanish" -> "Responde específicamente en español.";
+            case "fr", "french" -> "Répondez spécifiquement en français.";
+            case "de", "german" -> "Antworten Sie spezifisch auf Deutsch.";
+            default -> String.format("Respond specifically in %s language.", language);
+        };
+        
+        return originalPrompt + " " + languageInstruction;
+    }
+    
+    /**
+     * Checks if a conditional notification should be sent based on AI response
+     * Returns true if the AI response contains <checked>true</checked> tag
+     */
+    private boolean shouldSendConditionalNotification(String aiResponse) {
+        if (aiResponse == null || aiResponse.isEmpty()) {
+            return false;
+        }
+        
+        return CHECKED_TRUE_PATTERN.matcher(aiResponse).find();
     }
     
     private NotificationStatus determineFinalStatus(Set<NotificationChannel> successful, 

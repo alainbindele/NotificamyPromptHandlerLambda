@@ -33,7 +33,19 @@ public interface QueryMapper {
             ObjectMapper mapper = new ObjectMapper();
             List<String> channelNames = mapper.readValue(channelsJson, new TypeReference<List<String>>() {});
             return channelNames.stream()
-                    .map(NotificationChannel::valueOf)
+                    .map(channelName -> {
+                        try {
+                            // Handle WHATSAPP vs WWHATSAPP mapping
+                            if ("WWHATSAPP".equals(channelName)) {
+                                return NotificationChannel.WHATSAPP;
+                            }
+                            return NotificationChannel.valueOf(channelName);
+                        } catch (IllegalArgumentException e) {
+                            // Skip invalid channel names
+                            return null;
+                        }
+                    })
+                    .filter(channel -> channel != null)
                     .collect(Collectors.toSet());
         } catch (Exception e) {
             return Set.of(NotificationChannel.EMAIL); // Fallback to email
