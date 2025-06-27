@@ -53,43 +53,41 @@ public class NotificationService {
             LocalDateTime now = LocalDateTime.now();
             boolean queryUpdated = false;
             
-            // Check if date-specific query has expired and close it if needed
+            // ✅ PRIORITÀ 1: Controlla se la query è chiusa (se closed=1, non inviare mai)
+            if (Boolean.TRUE.equals(query.getClosed())) {
+                LOG.infof("Query %d is closed, skipping notification", queryId);
+                return;
+            }
+            
+            // ✅ PRIORITÀ 2: Controlla vincoli temporali (valid_from e valid_to)
+            if (!query.isWithinValidityPeriod()) {
+                LOG.infof("Query %d is outside validity period (from: %s, to: %s), closing query and skipping notification", 
+                        queryId, query.getValidFrom(), query.getValidTo());
+                queryRepository.updateQueryClosed(queryId, true);
+                return;
+            }
+            
+            // ✅ PRIORITÀ 3: Se valid_to è nel passato, chiudi la query
+            if (query.getValidTo() != null && now.isAfter(query.getValidTo())) {
+                LOG.infof("Query %d is beyond valid_to period (%s), closing it", 
+                        queryId, query.getValidTo());
+                queryRepository.updateQueryClosed(queryId, true);
+                return;
+            }
+            
+            // ✅ PRIORITÀ 4: Se è date_specific e next_execution è nel passato, chiudi la query
             if (Boolean.TRUE.equals(query.getDateSpecific()) && query.getNextExecution() != null) {
                 if (query.getNextExecution().isBefore(now)) {
                     LOG.infof("Date-specific query %d has expired (next_execution: %s), closing it", 
                             queryId, query.getNextExecution());
                     queryRepository.updateQueryClosed(queryId, true);
-                    queryUpdated = true;
+                    return;
                 }
             }
             
-            // Check if query is beyond valid_to period and close it if needed
-            if (query.getValidTo() != null && now.isAfter(query.getValidTo())) {
-                LOG.infof("Query %d is beyond valid_to period (%s), closing it", 
-                        queryId, query.getValidTo());
-                queryRepository.updateQueryClosed(queryId, true);
-                queryUpdated = true;
-            }
-            
-            // Refresh the query if it was updated
-            if (queryUpdated) {
-                query = queryRepository.findById(queryId);
-                if (query == null) {
-                    throw new RuntimeException("Query not found after update: " + queryId);
-                }
-            }
-            
-            // Check if query is active
-            if (!query.isActive()) {
-                LOG.infof("Query %d is not active (valid: %s, closed: %s), skipping notification", 
-                        queryId, query.getIsValid(), query.getClosed());
-                return;
-            }
-            
-            // Check validity period
-            if (!query.isWithinValidityPeriod()) {
-                LOG.infof("Query %d is outside validity period (from: %s, to: %s), skipping notification", 
-                        queryId, query.getValidFrom(), query.getValidTo());
+            // ✅ PRIORITÀ 5: Controlla se la query è valida
+            if (!Boolean.TRUE.equals(query.getIsValid())) {
+                LOG.infof("Query %d is not valid, skipping notification", queryId);
                 return;
             }
             
@@ -98,11 +96,20 @@ public class NotificationService {
                 throw new RuntimeException("User not found for query: " + queryId);
             }
             
-            // For conditional queries (to_check = true), check temporal constraints first
-            if (query.requiresConditionalCheck()) {
-                if (!isWithinTemporalConstraints(query, now)) {
-                    LOG.infof("Query %d is outside temporal constraints, skipping conditional check", queryId);
-                    return;
+            // ✅ LOGICA PRINCIPALE: Se next_execution è nel passato, ignora i vincoli cron
+            boolean shouldProcessConditionalCheck = true;
+            
+            if (query.getNextExecution() != null && query.getNextExecution().isBefore(now)) {
+                LOG.infof("Query %d has next_execution in the past (%s), ignoring cron constraints", 
+                        queryId, query.getNextExecution());
+                // Procedi direttamente senza controllare vincoli temporali cron
+            } else {
+                // ✅ Se next_execution è nel futuro o null, controlla vincoli temporali per query condizionali
+                if (query.requiresConditionalCheck()) {
+                    if (!isWithinTemporalConstraints(query, now)) {
+                        LOG.infof("Query %d is outside temporal constraints, skipping conditional check", queryId);
+                        return;
+                    }
                 }
             }
             
@@ -190,6 +197,7 @@ public class NotificationService {
     
     /**
      * Checks if the current time is within the temporal constraints for conditional queries
+     * NOTA: Questa funzione viene chiamata SOLO se next_execution NON è nel passato
      */
     private boolean isWithinTemporalConstraints(Query query, LocalDateTime now) {
         // If no cron parameters, no temporal constraints
