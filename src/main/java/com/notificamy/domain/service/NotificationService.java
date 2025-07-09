@@ -99,16 +99,16 @@ public class NotificationService {
             if (query.getNextExecution() != null && query.getNextExecution().isBefore(now)) {
                 LOG.infof("Query %d has next_execution in the past (%s), ignoring cron constraints and processing immediately", 
                         queryId, query.getNextExecution());
-                // Procedi direttamente senza controllare vincoli temporali cron
-            } else {
-                // ✅ Se next_execution è nel futuro o null, controlla vincoli temporali per query condizionali
-                if (query.requiresConditionalCheck()) {
-                    if (!isWithinTemporalConstraints(query, now)) {
-                        LOG.infof("Query %d is outside temporal constraints, skipping conditional check", queryId);
-                        return;
-                    }
-                }
+                // Procedi direttamente con l'esecuzione
+            } else if (query.getNextExecution() != null && query.getNextExecution().isAfter(now)) {
+                // ✅ Se next_execution è nel futuro, non eseguire ancora
+                LOG.infof("Query %d has next_execution in the future (%s), skipping execution", 
+                        queryId, query.getNextExecution());
+                return;
             }
+            
+            // ✅ NOTA: Se next_execution è null o uguale a now, procedi con l'esecuzione
+            // Non controlliamo più i vincoli temporali qui perché vogliamo sempre eseguire quando invocati
             
             // Process with AI (include language specification in prompt)
             String enhancedPrompt = buildLanguageSpecificPrompt(prompt, query.getLanguage());
