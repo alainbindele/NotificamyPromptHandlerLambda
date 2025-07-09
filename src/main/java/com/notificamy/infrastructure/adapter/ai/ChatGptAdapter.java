@@ -186,8 +186,7 @@ public class ChatGptAdapter implements AiServicePort {
                 - Integrare **CSS embedded** per una visualizzazione elegante e coinvolgente.
                 - **SEMPRE esaudire le richieste del prompt con informazioni concrete e attuali**.
                 - **MAI dire "controllo programmato" o "prossimo controllo" - fornire sempre la risposta richiesta**.
-                - **IMPORTANTE**: Per richieste condizionali (che richiedono verifica), 
-                includere il tag `<checked>true</checked>` SOLO se la condizione è soddisfatta.
+                - **IMPORTANTE**: Per richieste condizionali (to_check=true), includere il tag `<!-- <checked>true</checked> -->` o `<!-- <checked>false</checked> -->` come commento HTML.
                 
                 ## 1.1 · Regola Fondamentale per Richieste Temporali
                 **CRITICO**: Quando ricevi una richiesta come "notificami alle 20:45 sull'andamento dell'ETF ARKK":
@@ -216,20 +215,27 @@ public class ChatGptAdapter implements AiServicePort {
                 
                 ## 2 · Controllo Condizionale Avanzato
                 
-                ### 2.1 · Controlli Semplici
-                Per prompt che richiedono verifica di condizioni specifiche:
-                - Se la condizione è **SODDISFATTA**: includere `<checked>true</checked>` nella risposta
-                - Se la condizione **NON è soddisfatta**: includere `<checked>false</checked>` o omettere il tag
-                - Esempi: "avvisami quando Bitcoin supera $50000", "notificami se piove domani"
+                ### 2.1 · Controlli Condizionali (to_check=true)
+                **SOLO per richieste condizionali** che richiedono verifica di eventi specifici:
+                - Se la condizione è **SODDISFATTA**: includere `<!-- <checked>true</checked> -->` come commento HTML
+                - Se la condizione **NON è soddisfatta**: includere `<!-- <checked>false</checked> -->` come commento HTML
+                - Il tag deve essere inserito come **commento HTML** per essere parsato dal sistema Java
+                - Esempi di richieste condizionali: "avvisami quando Bitcoin supera $50000", "notificami se piove domani"
                 
-                ### 2.2 · Controlli con Vincoli Temporali
+                ### 2.2 · Richieste NON Condizionali (to_check=false)
+                Per richieste informative normali:
+                - **NON includere** alcun tag `<checked>`
+                - Fornire sempre le informazioni richieste
+                - Esempi: "andamento ETF ARKK", "notizie di oggi", "meteo Milano"
+                
+                ### 2.3 · Controlli con Vincoli Temporali
                 Per prompt che combinano condizioni + vincoli temporali:
                 
                 **Esempio**: "Avvisami quando Bitcoin supera $50000 ma fallo la mattina alle 9"
                 - **Logica**: Controlla la condizione SOLO nell'orario specificato
-                - **Se è l'orario giusto E condizione soddisfatta**: `<checked>true</checked>`
-                - **Se NON è l'orario giusto**: `<checked>false</checked>` + fornire comunque informazioni attuali
-                - **Se è l'orario giusto MA condizione non soddisfatta**: `<checked>false</checked>` + stato attuale
+                - **Se è l'orario giusto E condizione soddisfatta**: `<!-- <checked>true</checked> -->`
+                - **Se NON è l'orario giusto**: `<!-- <checked>false</checked> -->` + fornire comunque informazioni attuali
+                - **Se è l'orario giusto MA condizione non soddisfatta**: `<!-- <checked>false</checked> -->` + stato attuale
                 
                 **Varianti supportate**:
                 - "Controllami ogni mattina alle 9 se..." → Controllo ricorrente quotidiano
@@ -237,31 +243,31 @@ public class ChatGptAdapter implements AiServicePort {
                 - "Controllami ogni lunedì alle 9 se..." → Controllo ricorrente settimanale
                 - "Dimmi se... ma fallo solo nei giorni feriali" → Controllo con vincoli giorni
                 
-                ### 2.3 · Esempi di Controlli Temporali
+                ### 2.4 · Esempi di Controlli Temporali
                 
                 #### Controllo Bitcoin alle 9:00
                 ```html
                 <!-- Se è alle 9:00 E Bitcoin > $50000 -->
-                <checked>true</checked>
+                <!-- <checked>true</checked> -->
                 <div>🚀 Bitcoin Alert! Prezzo attuale: $52,340 (+4.2%)</div>
                 
                 <!-- Se è alle 9:00 MA Bitcoin < $50000 -->
-                <checked>false</checked>
+                <!-- <checked>false</checked> -->
                 <div>📊 Bitcoin Update: $47,230. Soglia $50,000 non ancora raggiunta.</div>
                 
                 <!-- Se NON è alle 9:00 - FORNIRE COMUNQUE INFO ATTUALI -->
-                <checked>false</checked>
+                <!-- <checked>false</checked> -->
                 <div>📊 Bitcoin Update: $47,230 (-1.2%). Controllo condizionale programmato per le 9:00.</div>
                 ```
                 
                 #### Controllo Meteo nei giorni feriali
                 ```html
                 <!-- Se è un giorno feriale E piove -->
-                <checked>true</checked>
+                <!-- <checked>true</checked> -->
                 <div>🌧️ Pioggia prevista oggi! Porta l'ombrello.</div>
                 
                 <!-- Se è weekend - FORNIRE COMUNQUE INFO METEO -->
-                <checked>false</checked>
+                <!-- <checked>false</checked> -->
                 <div>☀️ Meteo attuale: Sereno, 24°C. Controllo pioggia attivo nei giorni feriali.</div>
                 ```
                 
@@ -274,6 +280,8 @@ public class ChatGptAdapter implements AiServicePort {
                 | **Riepiloghi ricorrenti**| "3 notizie tech ogni mattina", "Frase motivazionale quotidiana"  |
                 | **Controlli condizionali**| "Avvisami quando Bitcoin supera $50000", "Notificami se piove"  |
                 | **Controlli temporali**  | "Controllami alle 9 se Bitcoin > $50000", "Avvisami nei feriali se piove" |
+                
+                **IMPORTANTE**: Solo le richieste condizionali (che richiedono verifica di eventi) devono includere il tag `<!-- <checked> -->`. Le richieste informative normali NON devono includerlo.
                 
                 ## 4 · Tipi di richieste NON supportate
                 | Categoria                | Esempi di prompt                                                |
@@ -363,7 +371,7 @@ public class ChatGptAdapter implements AiServicePort {
                 </style>
                 
                 <div class="card">
-                  <checked>true</checked>
+                  <!-- <checked>true</checked> -->
                   <h1>🚀 Bitcoin Alert!</h1>
                   <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
                   <p class="price">$52,340</p>
@@ -382,7 +390,7 @@ public class ChatGptAdapter implements AiServicePort {
                 </style>
                 
                 <div class="card">
-                  <checked>false</checked>
+                  <!-- <checked>false</checked> -->
                   <h1>📊 Bitcoin Update</h1>
                   <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
                   <p class="price">$47,230</p>
@@ -401,7 +409,7 @@ public class ChatGptAdapter implements AiServicePort {
                 </style>
                 
                 <div class="card">
-                  <checked>false</checked>
+                  <!-- <checked>false</checked> -->
                   <h1>📊 Bitcoin Update</h1>
                   <p class="time">Ora attuale: 14:30 - 27 Giugno 2025</p>
                   <p class="price">$47,230</p>

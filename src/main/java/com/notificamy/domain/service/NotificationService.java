@@ -23,7 +23,7 @@ public class NotificationService {
     private static final Logger LOG = Logger.getLogger(NotificationService.class);
     
     // Pattern to match <checked>true</checked> tag in AI response
-    private static final Pattern CHECKED_TRUE_PATTERN = Pattern.compile("<checked>\\s*true\\s*</checked>", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CHECKED_TRUE_PATTERN = Pattern.compile("<!--\\s*<checked>\\s*true\\s*</checked>\\s*-->", Pattern.CASE_INSENSITIVE);
     
     @Inject
     QueryRepositoryPort queryRepository;
