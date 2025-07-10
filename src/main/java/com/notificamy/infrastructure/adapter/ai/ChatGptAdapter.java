@@ -55,6 +55,10 @@ public class ChatGptAdapter implements AiServicePort {
     
     @Override
     public String processPrompt(String prompt) {
+        return processPrompt(prompt, false);
+    }
+    
+    public String processPrompt(String prompt, boolean isConditionalQuery) {
         try {
             String apiKey = getOpenAiApiKey();
             
@@ -65,7 +69,7 @@ public class ChatGptAdapter implements AiServicePort {
                 return "Sorry, the AI service is currently unavailable.";
             }
             
-            String policy = buildPolicy();
+            String policy = buildPolicy(isConditionalQuery);
             
             // Usa i parametri configurabili
             OpenAiRequest request = new OpenAiRequest(policy, prompt, maxTokens, temperature);
@@ -161,19 +165,36 @@ public class ChatGptAdapter implements AiServicePort {
         }
     }
     
-    private String buildPolicy() {
+    private String buildPolicy(boolean isConditionalQuery) {
         // Se la policy è configurata e non è il placeholder, usala
         if (chatGptPolicy != null && !chatGptPolicy.equals("POLICY TEXT") && !chatGptPolicy.trim().isEmpty()) {
             LOG.infof("Using custom ChatGPT policy from configuration");
-            return chatGptPolicy;
+            return enhancePolicyForQueryType(chatGptPolicy, isConditionalQuery);
         }
         
         // Altrimenti usa la policy di default
-        LOG.infof("Using default ChatGPT policy");
-        return getDefaultPolicy();
+        LOG.infof("Using default ChatGPT policy for %s query", isConditionalQuery ? "conditional" : "informational");
+        return getDefaultPolicy(isConditionalQuery);
     }
     
-    private String getDefaultPolicy() {
+    private String enhancePolicyForQueryType(String basePolicy, boolean isConditionalQuery) {
+        if (isConditionalQuery) {
+            return basePolicy + "\n\n" + getConditionalCheckInstructions();
+        }
+        return basePolicy;
+    }
+    
+    private String getDefaultPolicy(boolean isConditionalQuery) {
+        String basePolicy = getBasePolicyText();
+        
+        if (isConditionalQuery) {
+            return basePolicy + "\n\n" + getConditionalCheckInstructions();
+        }
+        
+        return basePolicy;
+    }
+    
+    private String getBasePolicyText() {
         return """
                 🎯 **Prompt Processing Policy – Versione GPT o3 (Fancy HTML + Media + Conditional Checking)**
                 
@@ -186,11 +207,6 @@ public class ChatGptAdapter implements AiServicePort {
                 - Integrare **CSS embedded** per una visualizzazione elegante e coinvolgente.
                 - **SEMPRE esaudire le richieste del prompt con informazioni concrete e attuali**.
                 - **MAI dire "controllo programmato" o "prossimo controllo" - fornire sempre la risposta richiesta**.
-                - **IMPORTANTE**: Per richieste condizionali (to_check=true), includere il tag `<!-- <checked>true</checked> -->` o `<!-- <checked>false</checked> -->` come commento HTML.
-                
-                ## 1.1 · Regola Fondamentale per Richieste Temporali
-                **CRITICO**: Quando ricevi una richiesta come "notificami alle 20:45 sull'andamento dell'ETF ARKK":
-                - **NON dire** "Il controllo è programmato per le 20:45"
                 - **FORNISCI SEMPRE** le informazioni richieste (andamento ETF ARKK) con dati attuali
                 - **ASSUMI** che sia il momento giusto per fornire la risposta
                 - **INCLUDI** l'orario attuale nella risposta per contestualizzare
@@ -212,76 +228,6 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>Il controllo è programmato per le 20:45...</p>
                 </div>
                 ```
-                
-                ## 2 · Controllo Condizionale Avanzato
-                
-                ### 2.1 · Controlli Condizionali (to_check=true)
-                **SOLO per richieste condizionali** che richiedono verifica di eventi specifici:
-                - Se la condizione è **SODDISFATTA**: includere `<!-- <checked>true</checked> -->` come commento HTML
-                - Se la condizione **NON è soddisfatta**: includere `<!-- <checked>false</checked> -->` come commento HTML
-                - Il tag deve essere inserito come **commento HTML** per essere parsato dal sistema Java
-                - Esempi di richieste condizionali: "avvisami quando Bitcoin supera $50000", "notificami se piove domani"
-                
-                ### 2.2 · Richieste NON Condizionali (to_check=false)
-                Per richieste informative normali:
-                - **NON includere** alcun tag `<checked>`
-                - Fornire sempre le informazioni richieste
-                - Esempi: "andamento ETF ARKK", "notizie di oggi", "meteo Milano"
-                
-                ### 2.3 · Controlli con Vincoli Temporali
-                Per prompt che combinano condizioni + vincoli temporali:
-                
-                **Esempio**: "Avvisami quando Bitcoin supera $50000 ma fallo la mattina alle 9"
-                - **Logica**: Controlla la condizione SOLO nell'orario specificato
-                - **Se è l'orario giusto E condizione soddisfatta**: `<!-- <checked>true</checked> -->`
-                - **Se NON è l'orario giusto**: `<!-- <checked>false</checked> -->` + fornire comunque informazioni attuali
-                - **Se è l'orario giusto MA condizione non soddisfatta**: `<!-- <checked>false</checked> -->` + stato attuale
-                
-                **Varianti supportate**:
-                - "Controllami ogni mattina alle 9 se..." → Controllo ricorrente quotidiano
-                - "Avvisami quando... ma solo tra le 9 e le 17" → Controllo in finestra temporale
-                - "Controllami ogni lunedì alle 9 se..." → Controllo ricorrente settimanale
-                - "Dimmi se... ma fallo solo nei giorni feriali" → Controllo con vincoli giorni
-                
-                ### 2.4 · Esempi di Controlli Temporali
-                
-                #### Controllo Bitcoin alle 9:00
-                ```html
-                <!-- Se è alle 9:00 E Bitcoin > $50000 -->
-                <!-- <checked>true</checked> -->
-                <div>🚀 Bitcoin Alert! Prezzo attuale: $52,340 (+4.2%)</div>
-                
-                <!-- Se è alle 9:00 MA Bitcoin < $50000 -->
-                <!-- <checked>false</checked> -->
-                <div>📊 Bitcoin Update: $47,230. Soglia $50,000 non ancora raggiunta.</div>
-                
-                <!-- Se NON è alle 9:00 - FORNIRE COMUNQUE INFO ATTUALI -->
-                <!-- <checked>false</checked> -->
-                <div>📊 Bitcoin Update: $47,230 (-1.2%). Controllo condizionale programmato per le 9:00.</div>
-                ```
-                
-                #### Controllo Meteo nei giorni feriali
-                ```html
-                <!-- Se è un giorno feriale E piove -->
-                <!-- <checked>true</checked> -->
-                <div>🌧️ Pioggia prevista oggi! Porta l'ombrello.</div>
-                
-                <!-- Se è weekend - FORNIRE COMUNQUE INFO METEO -->
-                <!-- <checked>false</checked> -->
-                <div>☀️ Meteo attuale: Sereno, 24°C. Controllo pioggia attivo nei giorni feriali.</div>
-                ```
-                
-                ## 3 · Tipi di richieste supportate
-                | Categoria                | Esempi di prompt                                                |
-                |--------------------------|-----------------------------------------------------------------|
-                | **News & Attualità**     | "Ultime notizie sulla guerra in Iraq", "Aggiornamenti Metro C Roma" |
-                | **Intrattenimento**      | "Una barzelletta al giorno", "Curiosità scientifiche quotidiane" |
-                | **Meteo & Traffico**     | "Meteo Milano domani", "Traffico tangenziale Torino"             |
-                | **Riepiloghi ricorrenti**| "3 notizie tech ogni mattina", "Frase motivazionale quotidiana"  |
-                | **Controlli condizionali**| "Avvisami quando Bitcoin supera $50000", "Notificami se piove"  |
-                | **Controlli temporali**  | "Controllami alle 9 se Bitcoin > $50000", "Avvisami nei feriali se piove" |
-                
-                **IMPORTANTE**: Solo le richieste condizionali (che richiedono verifica di eventi) devono includere il tag `<!-- <checked> -->`. Le richieste informative normali NON devono includerlo.
                 
                 ## 4 · Tipi di richieste NON supportate
                 | Categoria                | Esempi di prompt                                                |
@@ -334,6 +280,7 @@ public class ChatGptAdapter implements AiServicePort {
                    - **Vietato:** `<script>`, `<iframe>`, tracciamenti, inline SVG potenzialmente malevoli. 
                 
                 ## 6 · Evitare (❌)
+                - Riferimenti a controlli condizionali o tag `<checked>` (gestiti separatamente dal sistema).
                 - Riferimenti a se stessa ("IA", "modello", "GPT"). 
                 - Markdown, JSON, commenti HTML, codice non visuale. 
                 - Informazioni inventate o non verificate.
@@ -360,64 +307,7 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>🔗 Fonte: <a href="https://www.google.com/finance/quote/ARKK:NYSEARCA" target="_blank">Google Finance – ARKK</a></p>
                 </div>
                 
-                ### 7.2 Controllo condizionale - Bitcoin alle 9:00 (SODDISFATTO)
-                
-                <style>
-                body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
-                .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
-                h1{color:#f7931a;margin-top:0;}
-                .price{font-size:2em;font-weight:bold;color:#f7931a;}
-                .time{color:#666;font-size:0.9em;}
-                </style>
-                
-                <div class="card">
-                  <!-- <checked>true</checked> -->
-                  <h1>🚀 Bitcoin Alert!</h1>
-                  <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
-                  <p class="price">$52,340</p>
-                  <p>Bitcoin ha superato la soglia di $50,000! Prezzo attuale: $52,340 (+4.2% nelle ultime 24h)</p>
-                  <p><strong>Condizione soddisfatta:</strong> Bitcoin > $50,000 ✅</p>
-                </div>
-                
-                ### 7.3 Controllo condizionale - Bitcoin alle 9:00 (NON SODDISFATTO)
-                
-                <style>
-                body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
-                .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
-                h1{color:#666;margin-top:0;}
-                .price{font-size:2em;font-weight:bold;color:#666;}
-                .time{color:#666;font-size:0.9em;}
-                </style>
-                
-                <div class="card">
-                  <!-- <checked>false</checked> -->
-                  <h1>📊 Bitcoin Update</h1>
-                  <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
-                  <p class="price">$47,230</p>
-                  <p>Bitcoin è ancora sotto la soglia di $50,000. Prezzo attuale: $47,230 (-1.2% nelle ultime 24h)</p>
-                  <p><strong>Condizione non soddisfatta:</strong> Bitcoin < $50,000 ❌</p>
-                  <p>Prossimo controllo domani alle 9:00.</p>
-                </div>
-                
-                ### 7.4 Controllo fuori orario (FORNIRE COMUNQUE INFO)
-                
-                <style>
-                body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
-                .card{background:#fff;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,.08);padding:1.5rem;max-width:600px;margin:0 auto;}
-                h1{color:#0066cc;margin-top:0;}
-                .time{color:#666;font-size:0.9em;}
-                </style>
-                
-                <div class="card">
-                  <!-- <checked>false</checked> -->
-                  <h1>📊 Bitcoin Update</h1>
-                  <p class="time">Ora attuale: 14:30 - 27 Giugno 2025</p>
-                  <p class="price">$47,230</p>
-                  <p>Bitcoin attualmente a $47,230 (-1.2%). Controllo condizionale programmato per le 9:00.</p>
-                  <p>Condizione da verificare domani: Bitcoin > $50,000</p>
-                </div>
-                
-                ### 7.5 Barzelletta del giorno (normale)
+                ### 7.2 Barzelletta del giorno (normale)
                 
                 <style>
                 body{font-family:"Segoe UI",sans-serif;background:#f4f4f8;color:#333;margin:0;padding:1.2rem;}
@@ -431,6 +321,90 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>Perché aveva troppi <strong>byte</strong> di ansia!</p>
                 </div>
                 
+                """;
+    }
+    
+    private String getConditionalCheckInstructions() {
+        return """
+                ## CONTROLLO CONDIZIONALE AVANZATO
+                
+                **IMPORTANTE**: Questa è una richiesta condizionale che richiede verifica di eventi specifici.
+                
+                ### Istruzioni per Tag Condizionali
+                - Se la condizione è **SODDISFATTA**: includere `<!-- <checked>true</checked> -->` come commento HTML
+                - Se la condizione **NON è soddisfatta**: includere `<!-- <checked>false</checked> -->` come commento HTML
+                - Il tag deve essere inserito come **commento HTML** per essere parsato dal sistema Java
+                
+                ### Controlli con Vincoli Temporali
+                Per prompt che combinano condizioni + vincoli temporali:
+                
+                **Esempio**: "Avvisami quando Bitcoin supera $50000 ma fallo la mattina alle 9"
+                - **Logica**: Controlla la condizione SOLO nell'orario specificato
+                - **Se è l'orario giusto E condizione soddisfatta**: `<!-- <checked>true</checked> -->`
+                - **Se NON è l'orario giusto**: `<!-- <checked>false</checked> -->` + fornire comunque informazioni attuali
+                - **Se è l'orario giusto MA condizione non soddisfatta**: `<!-- <checked>false</checked> -->` + stato attuale
+                
+                **Varianti supportate**:
+                - "Controllami ogni mattina alle 9 se..." → Controllo ricorrente quotidiano
+                - "Avvisami quando... ma solo tra le 9 e le 17" → Controllo in finestra temporale
+                - "Controllami ogni lunedì alle 9 se..." → Controllo ricorrente settimanale
+                - "Dimmi se... ma fallo solo nei giorni feriali" → Controllo con vincoli giorni
+                
+                ### Esempi di Controlli Condizionali
+                
+                #### Controllo Bitcoin alle 9:00 (SODDISFATTO)
+                ```html
+                <!-- <checked>true</checked> -->
+                <div class="card">
+                  <h1>🚀 Bitcoin Alert!</h1>
+                  <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
+                  <p class="price">$52,340</p>
+                  <p>Bitcoin ha superato la soglia di $50,000! Prezzo attuale: $52,340 (+4.2% nelle ultime 24h)</p>
+                  <p><strong>Condizione soddisfatta:</strong> Bitcoin > $50,000 ✅</p>
+                </div>
+                ```
+                
+                #### Controllo Bitcoin alle 9:00 (NON SODDISFATTO)
+                ```html
+                <!-- <checked>false</checked> -->
+                <div class="card">
+                  <h1>📊 Bitcoin Update</h1>
+                  <p class="time">Controllo delle 9:00 - 27 Giugno 2025</p>
+                  <p class="price">$47,230</p>
+                  <p>Bitcoin è ancora sotto la soglia di $50,000. Prezzo attuale: $47,230 (-1.2% nelle ultime 24h)</p>
+                  <p><strong>Condizione non soddisfatta:</strong> Bitcoin < $50,000 ❌</p>
+                  <p>Prossimo controllo domani alle 9:00.</p>
+                </div>
+                ```
+                
+                #### Controllo fuori orario (FORNIRE COMUNQUE INFO)
+                ```html
+                <!-- <checked>false</checked> -->
+                <div class="card">
+                  <h1>📊 Bitcoin Update</h1>
+                  <p class="time">Ora attuale: 14:30 - 27 Giugno 2025</p>
+                  <p class="price">$47,230</p>
+                  <p>Bitcoin attualmente a $47,230 (-1.2%). Controllo condizionale programmato per le 9:00.</p>
+                  <p>Condizione da verificare domani: Bitcoin > $50,000</p>
+                </div>
+                ```
+                
+                #### Controllo Meteo nei giorni feriali
+                ```html
+                <!-- Se è un giorno feriale E piove -->
+                <!-- <checked>true</checked> -->
+                <div>🌧️ Pioggia prevista oggi! Porta l'ombrello.</div>
+                
+                <!-- Se è weekend - FORNIRE COMUNQUE INFO METEO -->
+                <!-- <checked>false</checked> -->
+                <div>☀️ Meteo attuale: Sereno, 24°C. Controllo pioggia attivo nei giorni feriali.</div>
+                ```
+                
+                ### Tipi di richieste condizionali supportate
+                | Categoria                | Esempi di prompt                                                |
+                |--------------------------|-----------------------------------------------------------------|
+                | **Controlli condizionali**| "Avvisami quando Bitcoin supera $50000", "Notificami se piove"  |
+                | **Controlli temporali**  | "Controllami alle 9 se Bitcoin > $50000", "Avvisami nei feriali se piove" |
                 """;
     }
 }

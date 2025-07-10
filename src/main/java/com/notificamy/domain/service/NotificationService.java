@@ -97,7 +97,7 @@ public class NotificationService {
             
             // Process with AI (include language specification in prompt)
             String enhancedPrompt = buildLanguageSpecificPrompt(prompt, query.getLanguage());
-            String aiResponse = aiService.processPrompt(enhancedPrompt);
+            String aiResponse = aiService.processPrompt(enhancedPrompt, query.requiresConditionalCheck());
             
             // For conditional queries (to_check = true), check if notification should be sent
             if (query.requiresConditionalCheck()) {
