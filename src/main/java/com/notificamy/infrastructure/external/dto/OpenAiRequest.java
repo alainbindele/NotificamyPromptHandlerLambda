@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class OpenAiRequest {
     
-    private String model = "gpt-3.5-turbo";
+    private String model = "gpt-4o";
     private Message[] messages;
     
     @JsonProperty("max_tokens")
