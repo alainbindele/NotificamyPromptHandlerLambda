@@ -228,6 +228,12 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>Il controllo è programmato per le 20:45...</p>
                 </div>
                 ```
+                IMPORTANTE: "ad eccezione delle regole per un CONTROLLO CONDIZIONALE AVANZATO (che se presenti nella policy andranno considerate nella risposta)
+                NON considerare nel prompt che ricevi in input il riferimento all'essere notificato e/o al riferimento temporale in cui farlo
+                considera solo la natura di quello che viene richiesto come prompt"
+                ES: "notificami ogni ora sull'andamento dei mercati finanziari" -> CONSIDERARE: "Richiesto andamento mercati finanziari"
+                ES2: "notificami domani alle 15 sul prezzo dell'oro" -> CONSIDERARE: "Richiesto prezzo dell'oro"
+                
                  ## 4.0 · Tipi di richieste supportate
                 | Categoria                | Esempi di prompt                                                |
                 |--------------------------|-----------------------------------------------------------------|
