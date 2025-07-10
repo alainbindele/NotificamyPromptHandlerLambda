@@ -95,21 +95,6 @@ public class NotificationService {
                 throw new RuntimeException("User not found for query: " + queryId);
             }
             
-            // ✅ LOGICA PRINCIPALE: Se next_execution è nel passato, ignora i vincoli cron
-            if (query.getNextExecution() != null && query.getNextExecution().isBefore(now)) {
-                LOG.infof("Query %d has next_execution in the past (%s), ignoring cron constraints and processing immediately", 
-                        queryId, query.getNextExecution());
-                // Procedi direttamente con l'esecuzione
-            } else if (query.getNextExecution() != null && query.getNextExecution().isAfter(now)) {
-                // ✅ Se next_execution è nel futuro, non eseguire ancora
-                LOG.infof("Query %d has next_execution in the future (%s), skipping execution", 
-                        queryId, query.getNextExecution());
-                return;
-            }
-            
-            // ✅ NOTA: Se next_execution è null o uguale a now, procedi con l'esecuzione
-            // Non controlliamo più i vincoli temporali qui perché vogliamo sempre eseguire quando invocati
-            
             // Process with AI (include language specification in prompt)
             String enhancedPrompt = buildLanguageSpecificPrompt(prompt, query.getLanguage());
             String aiResponse = aiService.processPrompt(enhancedPrompt);
