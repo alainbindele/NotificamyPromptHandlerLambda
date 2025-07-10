@@ -363,11 +363,38 @@ public class NotificationService {
      * Returns true if the AI response contains <checked>true</checked> tag
      */
     private boolean shouldSendConditionalNotification(String aiResponse) {
+        LOG.infof("Checking conditional notification for AI response (length: %d)", 
+                aiResponse != null ? aiResponse.length() : 0);
+        
         if (aiResponse == null || aiResponse.isEmpty()) {
+            LOG.warn("AI response is null or empty, conditional check failed");
             return false;
         }
         
-        return CHECKED_TRUE_PATTERN.matcher(aiResponse).find();
+        boolean hasCheckedTrue = CHECKED_TRUE_PATTERN.matcher(aiResponse).find();
+        
+        LOG.infof("Conditional check result: %s", hasCheckedTrue ? "PASSED (found <checked>true</checked>)" : "FAILED (no <checked>true</checked> found)");
+        
+        // Log a sample of the AI response for debugging
+        String responseSample = aiResponse.length() > 200 ? 
+                aiResponse.substring(0, 200) + "..." : aiResponse;
+        LOG.infof("AI response sample: %s", responseSample);
+        
+        // Check if there's any <checked> tag at all
+        if (aiResponse.contains("<checked>")) {
+            LOG.infof("Found <checked> tag in response, checking content...");
+            if (aiResponse.contains("<checked>false</checked>")) {
+                LOG.info("Found <checked>false</checked> - condition not met");
+            } else if (aiResponse.contains("<checked>true</checked>")) {
+                LOG.info("Found <checked>true</checked> - condition met");
+            } else {
+                LOG.warn("Found <checked> tag but with unexpected content");
+            }
+        } else {
+            LOG.warn("No <checked> tag found in AI response");
+        }
+        
+        return hasCheckedTrue;
     }
     
     private NotificationStatus determineFinalStatus(Set<NotificationChannel> successful, 
