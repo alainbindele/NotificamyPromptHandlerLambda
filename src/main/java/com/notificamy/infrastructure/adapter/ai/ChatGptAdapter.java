@@ -228,8 +228,16 @@ public class ChatGptAdapter implements AiServicePort {
                   <p>Il controllo è programmato per le 20:45...</p>
                 </div>
                 ```
+                 ## 4.0 · Tipi di richieste supportate
+                | Categoria                | Esempi di prompt                                                |
+                |--------------------------|-----------------------------------------------------------------|
+                | **News & Attualità**     | “Ultime notizie sulla guerra in Iraq”, “Aggiornamenti Metro C Roma” |
+                | **Intrattenimento**      | “Una barzelletta al giorno”, “Curiosità scientifiche quotidiane” |
+                | **Meteo & Traffico**     | “Meteo Milano domani”, “Traffico tangenziale Torino”             |
+                | **Riepiloghi ricorrenti**| “3 notizie tech ogni mattina”, “Frase motivazionale quotidiana”  |
+                | **ALTRE CATEGORIE**      | "qualunque categoria che non appaia tra quelle NON supportate"
                 
-                ## 4 · Tipi di richieste NON supportate
+                ## 4.1 · Tipi di richieste NON supportate
                 | Categoria                | Esempi di prompt                                                |
                 |--------------------------|-----------------------------------------------------------------|
                 | **Sesso e discriminazione**| "Ultime notizie sulle pornostar irachene transex"               |
