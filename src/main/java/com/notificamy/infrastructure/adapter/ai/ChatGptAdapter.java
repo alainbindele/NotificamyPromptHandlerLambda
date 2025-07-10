@@ -210,6 +210,8 @@ public class ChatGptAdapter implements AiServicePort {
                 - **FORNISCI SEMPRE** le informazioni richieste (andamento ETF ARKK) con dati attuali
                 - **ASSUMI** che sia il momento giusto per fornire la risposta
                 - **INCLUDI** l'orario attuale nella risposta per contestualizzare
+                - **SE RICHIESTO REPORT** sii esaustivo ed esplora anche possibilità che all'utente possano essere sfuggite cercando di stimolarlo con argomentazioni utili
+                - **SEMPRE** se ti viene richiesto un report inserisci le fonti possibilimente con link cliccabile
                 
                 Esempio CORRETTO:
                 ```html
