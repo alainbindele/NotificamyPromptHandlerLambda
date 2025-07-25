@@ -75,8 +75,6 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             LOG.infof("  Content-Type: text/html; charset=UTF-8");
             
             LOG.infof("📧 Creating SMTP session...");
-                    smtpConfig.getSmtpHost(), smtpConfig.getSmtpPort(), 
-                    smtpConfig.isSmtpAuth(), smtpConfig.isSmtpStartTls());
             
             // Crea la sessione SMTP
             Session session = Session.getInstance(props, new Authenticator() {
