@@ -35,11 +35,11 @@ public interface QueryMapper {
             return channelNames.stream()
                     .map(channelName -> {
                         try {
-                            // Map channel names to enum values
-                            return NotificationChannel.valueOf(channelName);
+                            // Map channel names to enum values (case-insensitive)
+                            return mapChannelName(channelName);
                         } catch (IllegalArgumentException e) {
                             // Log warning for invalid channel names
-                            System.err.println("Warning: Invalid channel name '" + channelName + "' in enabled_channels, skipping");
+                            System.err.println("Warning: Invalid channel name '" + channelName + "' in enabled_channels after mapping, skipping");
                             return null;
                         }
                     })
@@ -49,6 +49,27 @@ public interface QueryMapper {
             System.err.println("Error parsing enabled_channels JSON: " + e.getMessage());
             return Set.of(NotificationChannel.EMAIL); // Fallback to email
         }
+    }
+    
+    @Named("mapChannelName")
+    default NotificationChannel mapChannelName(String channelName) {
+        if (channelName == null || channelName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Channel name cannot be null or empty");
+        }
+        
+        String normalizedName = channelName.trim().toUpperCase();
+        
+        // Map common variations to standard enum values
+        return switch (normalizedName) {
+            case "EMAIL", "MAIL", "E-MAIL" -> NotificationChannel.EMAIL;
+            case "WHATSAPP", "WHATS_APP", "WHATS-APP", "WA" -> NotificationChannel.WHATSAPP;
+            case "SLACK" -> NotificationChannel.SLACK;
+            case "DISCORD" -> NotificationChannel.DISCORD;
+            default -> {
+                System.err.println("Warning: Unknown channel name '" + channelName + "' (normalized: '" + normalizedName + "'), trying direct enum mapping");
+                yield NotificationChannel.valueOf(normalizedName);
+            }
+        };
     }
     
     @Named("channelSetToString")
