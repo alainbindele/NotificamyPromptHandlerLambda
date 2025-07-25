@@ -60,26 +60,41 @@ public class ChatGptAdapter implements AiServicePort {
     
     public String processPrompt(String prompt, boolean isConditionalQuery) {
         try {
+            LOG.infof("=== CHATGPT ADAPTER - STARTING ===");
+            LOG.infof("Prompt length: %d characters", prompt != null ? prompt.length() : 0);
+            LOG.infof("Is conditional query: %s", isConditionalQuery);
+            LOG.infof("Prompt preview (first 200 chars): %s", 
+                    prompt != null && prompt.length() > 200 ? prompt.substring(0, 200) + "..." : prompt);
+            
             String apiKey = getOpenAiApiKey();
             
-            LOG.infof("OpenAI API Key retrieved: %s", apiKey != null ? "***" + apiKey.substring(Math.max(0, apiKey.length() - 4)) : "null");
+            LOG.infof("🤖 OpenAI API Key status: %s", apiKey != null ? "Retrieved (***" + apiKey.substring(Math.max(0, apiKey.length() - 4)) + ")" : "null");
             
             if (apiKey == null || apiKey.isEmpty()) {
-                LOG.error("OpenAI API key not found in secrets");
+                LOG.errorf("❌ OpenAI API key not found in secrets");
                 return "Sorry, the AI service is currently unavailable.";
             }
             
             String policy = buildPolicy(isConditionalQuery);
+            LOG.infof("🤖 Policy built - Length: %d characters", policy.length());
+            LOG.infof("🤖 Policy type: %s", isConditionalQuery ? "Conditional" : "Standard");
             
             // Usa i parametri configurabili
             OpenAiRequest request = new OpenAiRequest(policy, prompt, maxTokens, temperature);
             
-            LOG.infof("Sending request to ChatGPT for prompt: %s", prompt);
-            LOG.infof("Using policy: %s", policy.length() > 100 ? policy.substring(0, 100) + "..." : policy);
-            LOG.infof("ChatGPT parameters - Max tokens: %d, Temperature: %.2f", maxTokens, temperature);
+            LOG.infof("🤖 ChatGPT Request Parameters:");
+            LOG.infof("  API URL: %s", apiUrl);
+            LOG.infof("  Max tokens: %d", maxTokens);
+            LOG.infof("  Temperature: %.2f", temperature);
+            LOG.infof("  Model: gpt-4o");
             
             String requestBody = objectMapper.writeValueAsString(request);
-            LOG.debugf("Request body: %s", requestBody);
+            LOG.infof("🤖 Request body length: %d characters", requestBody.length());
+            LOG.infof("🤖 Request body preview: %s", 
+                    requestBody.length() > 500 ? requestBody.substring(0, 500) + "..." : requestBody);
+            
+            LOG.infof("🤖 Sending HTTP POST to OpenAI API...");
+            long startTime = System.currentTimeMillis();
             
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
@@ -91,51 +106,76 @@ public class ChatGptAdapter implements AiServicePort {
             
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             
-            LOG.infof("ChatGPT API response status: %d", response.statusCode());
-            LOG.debugf("ChatGPT API response body: %s", response.body());
+            long endTime = System.currentTimeMillis();
+            LOG.infof("🤖 OpenAI API response received:");
+            LOG.infof("  Status Code: %d", response.statusCode());
+            LOG.infof("  Duration: %dms", (endTime - startTime));
+            LOG.infof("  Response body length: %d characters", response.body().length());
+            LOG.infof("  Response body preview: %s", 
+                    response.body().length() > 300 ? response.body().substring(0, 300) + "..." : response.body());
             
             if (response.statusCode() == 200) {
                 ChatGptResponse chatGptResponse = objectMapper.readValue(response.body(), ChatGptResponse.class);
+                LOG.infof("🤖 Response parsed successfully");
                 
                 if (chatGptResponse.getChoices() != null && !chatGptResponse.getChoices().isEmpty()) {
+                    LOG.infof("🤖 Found %d choices in response", chatGptResponse.getChoices().size());
                     ChatGptResponse.Message message = chatGptResponse.getChoices().get(0).getMessage();
                     
                     // Controlla se c'è un refusal (rifiuto da parte di OpenAI)
                     if (message.getRefusal() != null && !message.getRefusal().isEmpty()) {
-                        LOG.warnf("OpenAI refused the request: %s", message.getRefusal());
+                        LOG.warnf("⚠️ OpenAI refused the request: %s", message.getRefusal());
                         return "I'm sorry, but I cannot process this request due to content policy restrictions.";
                     }
                     
                     String content = message.getContent();
                     if (content != null && !content.isEmpty()) {
-                        LOG.infof("ChatGPT response received successfully - Length: %d characters", content.length());
+                        LOG.infof("✅ CHATGPT RESPONSE RECEIVED SUCCESSFULLY");
+                        LOG.infof("  Content length: %d characters", content.length());
+                        LOG.infof("  Content preview: %s", 
+                                content.length() > 200 ? content.substring(0, 200) + "..." : content);
                         
                         // Log se la risposta potrebbe essere stata troncata
                         if (chatGptResponse.getChoices().get(0).getFinishReason() != null) {
                             String finishReason = chatGptResponse.getChoices().get(0).getFinishReason();
-                            LOG.infof("ChatGPT finish reason: %s", finishReason);
+                            LOG.infof("🤖 Finish reason: %s", finishReason);
                             
                             if ("length".equals(finishReason)) {
-                                LOG.warnf("ChatGPT response was truncated due to max_tokens limit (%d). Consider increasing max_tokens.", maxTokens);
+                                LOG.warnf("⚠️ Response truncated due to max_tokens limit (%d)", maxTokens);
                             }
+                        }
+                        
+                        // Log usage information if available
+                        if (chatGptResponse.getUsage() != null) {
+                            LOG.infof("🤖 Token usage:");
+                            LOG.infof("  Prompt tokens: %d", chatGptResponse.getUsage().getPromptTokens());
+                            LOG.infof("  Completion tokens: %d", chatGptResponse.getUsage().getCompletionTokens());
+                            LOG.infof("  Total tokens: %d", chatGptResponse.getUsage().getTotalTokens());
                         }
                         
                         return content;
                     } else {
-                        LOG.error("Empty content in ChatGPT response");
+                        LOG.errorf("❌ Empty content in ChatGPT response");
                         return "Sorry, I couldn't generate a proper response at this time.";
                     }
                 } else {
-                    LOG.error("Empty choices in ChatGPT response");
+                    LOG.errorf("❌ Empty choices in ChatGPT response");
                     return "Sorry, I couldn't process your request at this time.";
                 }
             } else {
-                LOG.errorf("ChatGPT API error: %d - %s", response.statusCode(), response.body());
+                LOG.errorf("❌ CHATGPT API ERROR");
+                LOG.errorf("  Status Code: %d", response.statusCode());
+                LOG.errorf("  Response Body: %s", response.body());
                 return "Sorry, there was an error processing your request.";
             }
             
         } catch (Exception e) {
-            LOG.errorf(e, "Error calling ChatGPT API");
+            LOG.errorf("❌ CHATGPT API CALL FAILED");
+            LOG.errorf("  Error: %s", e.getMessage());
+            LOG.errorf("  Exception type: %s", e.getClass().getSimpleName());
+            if (e.getCause() != null) {
+                LOG.errorf("  Caused by: %s - %s", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+            }
             return "Sorry, there was an error processing your request.";
         }
     }

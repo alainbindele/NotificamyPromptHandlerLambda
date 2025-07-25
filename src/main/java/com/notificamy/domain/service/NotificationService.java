@@ -39,7 +39,9 @@ public class NotificationService {
     
     @Transactional
     public void processNotificationRequest(Long queryId, String prompt) {
-        LOG.infof("Processing notification request for query ID: %d", queryId);
+        LOG.infof("=== STARTING NOTIFICATION PROCESSING ===");
+        LOG.infof("Query ID: %d", queryId);
+        LOG.infof("Prompt: %s", prompt);
         
         NotificationRecord notificationRecord = null;
         
@@ -47,10 +49,18 @@ public class NotificationService {
             // Fetch query and user
             Query query = queryRepository.findById(queryId);
             if (query == null) {
+                LOG.errorf("Query not found in database: %d", queryId);
                 throw new RuntimeException("Query not found: " + queryId);
             }
             
+            LOG.infof("Query found - ID: %d, User ID: %d, Valid: %s, Closed: %s", 
+                    query.getId(), query.getUserId(), query.getIsValid(), query.getClosed());
+            LOG.infof("Query enabled channels: %s", query.getEnabledChannels());
+            LOG.infof("Query type flags - Cron: %s, DateSpecific: %s, ToCheck: %s", 
+                    query.getCron(), query.getDateSpecific(), query.getToCheck());
+            
             LocalDateTime now = LocalDateTime.now();
+            LOG.infof("Current timestamp: %s", now);
             boolean shouldCloseAfterProcessing = false;
             
             // ✅ PRIORITÀ 1: Controlla se la query è chiusa (se closed=1, non inviare mai)
@@ -92,15 +102,30 @@ public class NotificationService {
             
             User user = queryRepository.findUserById(query.getUserId());
             if (user == null) {
+                LOG.errorf("User not found for query: %d, User ID: %d", queryId, query.getUserId());
                 throw new RuntimeException("User not found for query: " + queryId);
             }
             
+            LOG.infof("User found - ID: %d, Email: %s, Name: %s", 
+                    user.getId(), user.getEmail(), user.getName());
+            LOG.infof("User channel configurations: %s", user.getChannelConfigurations());
+            
             // Process with AI (include language specification in prompt)
             String enhancedPrompt = buildLanguageSpecificPrompt(prompt, query.getLanguage());
+            LOG.infof("Enhanced prompt (with language): %s", enhancedPrompt);
+            LOG.infof("Query language: %s", query.getLanguage());
+            LOG.infof("Is conditional query (to_check): %s", query.requiresConditionalCheck());
+            
             String aiResponse = aiService.processPrompt(enhancedPrompt, query.requiresConditionalCheck());
+            LOG.infof("AI Response received - Length: %d characters", 
+                    aiResponse != null ? aiResponse.length() : 0);
+            LOG.infof("AI Response preview (first 300 chars): %s", 
+                    aiResponse != null && aiResponse.length() > 300 ? 
+                    aiResponse.substring(0, 300) + "..." : aiResponse);
             
             // For conditional queries (to_check = true), check if notification should be sent
             if (query.requiresConditionalCheck()) {
+                LOG.infof("Processing conditional query - checking AI response for <checked> tags");
                 if (!shouldSendConditionalNotification(aiResponse)) {
                     LOG.infof("Conditional check failed for query %d, not sending notification", queryId);
                     
@@ -126,35 +151,48 @@ public class NotificationService {
                     queryId, prompt, user, query.getEnabledChannels(), aiResponse
             );
             
-            LOG.infof("Created notification request for query %d with enabled channels: %s", 
-                    queryId, query.getEnabledChannels());
+            LOG.infof("=== NOTIFICATION REQUEST CREATED ===");
+            LOG.infof("Query ID: %d", notificationRequest.getQueryId());
+            LOG.infof("User ID: %d, Email: %s", user.getId(), user.getEmail());
+            LOG.infof("Enabled channels: %s", notificationRequest.getChannels());
+            LOG.infof("AI Response length: %d", notificationRequest.getAiResponse().length());
             
             // Create notification record for tracking
             notificationRecord = notificationRecordPort.createNotificationRecord(notificationRequest);
+            LOG.infof("Notification record created with ID: %d", notificationRecord.getId());
             
             // Send notifications through all enabled channels
             Set<NotificationChannel> successfulChannels = new HashSet<>();
             Set<NotificationChannel> failedChannels = new HashSet<>();
             StringBuilder errorMessages = new StringBuilder();
             
+            LOG.infof("=== STARTING NOTIFICATION SENDING ===");
             try {
                 notificationPort.sendNotification(notificationRequest);
                 
                 // Se arriviamo qui senza eccezioni, significa che almeno un canale è riuscito
                 // Il NotificationAdapter lancia eccezione solo se TUTTI i canali falliscono
                 successfulChannels.addAll(query.getEnabledChannels());
-                LOG.infof("Notification sending completed successfully for query %d", queryId);
+                LOG.infof("=== NOTIFICATION SENDING COMPLETED SUCCESSFULLY ===");
+                LOG.infof("All enabled channels succeeded: %s", successfulChannels);
                 
             } catch (Exception e) {
-                LOG.errorf(e, "Error sending notifications for query %d", queryId);
+                LOG.errorf(e, "=== NOTIFICATION SENDING FAILED ===");
+                LOG.errorf("Error for query %d: %s", queryId, e.getMessage());
                 
                 // Se c'è un'eccezione dal NotificationAdapter, significa che tutti i canali sono falliti
                 failedChannels.addAll(query.getEnabledChannels());
                 errorMessages.append("Notification sending failed: ").append(e.getMessage());
+                LOG.errorf("All channels failed: %s", failedChannels);
             }
             
             // Update notification record with results
             NotificationStatus finalStatus = determineFinalStatus(successfulChannels, failedChannels, query.getEnabledChannels());
+            LOG.infof("=== UPDATING NOTIFICATION RECORD ===");
+            LOG.infof("Final status: %s", finalStatus);
+            LOG.infof("Successful channels: %s", successfulChannels);
+            LOG.infof("Failed channels: %s", failedChannels);
+            
             notificationRecordPort.updateNotificationStatus(
                     notificationRecord.getId(), 
                     finalStatus, 
@@ -168,10 +206,13 @@ public class NotificationService {
                 queryRepository.updateQueryClosed(queryId, true);
             }
             
-            LOG.infof("Notification request processed for query ID: %d with status: %s", queryId, finalStatus);
+            LOG.infof("=== NOTIFICATION PROCESSING COMPLETED ===");
+            LOG.infof("Query ID: %d, Final Status: %s", queryId, finalStatus);
             
         } catch (Exception e) {
-            LOG.errorf(e, "Error processing notification request for query ID: %d", queryId);
+            LOG.errorf(e, "=== NOTIFICATION PROCESSING ERROR ===");
+            LOG.errorf("Query ID: %d, Error: %s", queryId, e.getMessage());
+            LOG.errorf("Stack trace: ", e);
             
             // Update notification record with error status if it was created
             if (notificationRecord != null) {

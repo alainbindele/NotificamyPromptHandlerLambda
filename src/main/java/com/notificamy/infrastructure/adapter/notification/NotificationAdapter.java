@@ -33,39 +33,61 @@ public class NotificationAdapter implements NotificationPort {
     
     @Override
     public void sendNotification(NotificationRequest request) {
-        LOG.infof("Sending notifications for query %d through %d enabled channels: %s", 
-                request.getQueryId(), request.getChannels().size(), request.getChannels());
+        LOG.infof("=== NOTIFICATION ADAPTER - STARTING MULTI-CHANNEL SEND ===");
+        LOG.infof("Query ID: %d", request.getQueryId());
+        LOG.infof("User ID: %d, Email: %s", request.getUser().getId(), request.getUser().getEmail());
+        LOG.infof("Total enabled channels: %d", request.getChannels().size());
+        LOG.infof("Enabled channels: %s", request.getChannels());
+        LOG.infof("AI Response length: %d characters", request.getAiResponse().length());
         
         List<Exception> exceptions = new ArrayList<>();
         List<NotificationChannel> successfulChannels = new ArrayList<>();
         List<NotificationChannel> failedChannels = new ArrayList<>();
         
         for (NotificationChannel channel : request.getChannels()) {
-            LOG.infof("Attempting to send notification via %s for query %d", channel, request.getQueryId());
+            LOG.infof("--- ATTEMPTING CHANNEL: %s ---", channel);
+            LOG.infof("Query ID: %d, Channel: %s", request.getQueryId(), channel);
+            
             try {
+                long startTime = System.currentTimeMillis();
                 sendToChannel(channel, request);
+                long endTime = System.currentTimeMillis();
+                
                 successfulChannels.add(channel);
-                LOG.infof("Successfully sent notification via %s for query %d", channel, request.getQueryId());
+                LOG.infof("✅ SUCCESS - Channel: %s, Query: %d, Duration: %dms", 
+                        channel, request.getQueryId(), (endTime - startTime));
+                        
             } catch (Exception e) {
                 failedChannels.add(channel);
                 exceptions.add(e);
-                LOG.errorf(e, "Failed to send notification via %s for query %d: %s", 
-                        channel, request.getQueryId(), e.getMessage());
+                LOG.errorf("❌ FAILED - Channel: %s, Query: %d", channel, request.getQueryId());
+                LOG.errorf("Error message: %s", e.getMessage());
+                LOG.errorf("Exception type: %s", e.getClass().getSimpleName());
+                if (e.getCause() != null) {
+                    LOG.errorf("Caused by: %s - %s", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+                }
             }
         }
         
-        LOG.infof("Notification sending completed for query %d: %d successful, %d failed", 
-                request.getQueryId(), successfulChannels.size(), failedChannels.size());
+        LOG.infof("=== NOTIFICATION ADAPTER - MULTI-CHANNEL SEND COMPLETED ===");
+        LOG.infof("Query ID: %d", request.getQueryId());
+        LOG.infof("Total channels attempted: %d", request.getChannels().size());
+        LOG.infof("Successful channels: %d - %s", successfulChannels.size(), successfulChannels);
+        LOG.infof("Failed channels: %d - %s", failedChannels.size(), failedChannels);
         
         if (!successfulChannels.isEmpty()) {
-            LOG.infof("Successful channels for query %d: %s", request.getQueryId(), successfulChannels);
+            LOG.infof("✅ At least one channel succeeded - Operation considered successful");
         }
         if (!failedChannels.isEmpty()) {
-            LOG.warnf("Failed channels for query %d: %s", request.getQueryId(), failedChannels);
+            LOG.warnf("❌ Some channels failed: %s", failedChannels);
+            for (int i = 0; i < failedChannels.size() && i < exceptions.size(); i++) {
+                LOG.warnf("Channel %s failed with: %s", failedChannels.get(i), exceptions.get(i).getMessage());
+            }
         }
         
         // Se tutti i canali sono falliti, lanciamo un'eccezione
         if (successfulChannels.isEmpty() && !failedChannels.isEmpty()) {
+            LOG.errorf("🚨 ALL CHANNELS FAILED - Throwing exception");
             StringBuilder errorMessage = new StringBuilder("All notification channels failed: ");
             for (int i = 0; i < failedChannels.size(); i++) {
                 errorMessage.append(failedChannels.get(i));
@@ -73,18 +95,19 @@ public class NotificationAdapter implements NotificationPort {
                     errorMessage.append(", ");
                 }
             }
+            LOG.errorf("Combined error message: %s", errorMessage.toString());
             throw new RuntimeException(errorMessage.toString(), exceptions.get(0));
         }
         
         // Se alcuni canali sono falliti ma almeno uno è riuscito, logghiamo ma non lanciamo eccezione
         if (!failedChannels.isEmpty()) {
-            LOG.warnf("Some notification channels failed for query %d: %s", 
-                    request.getQueryId(), failedChannels);
+            LOG.warnf("⚠️ PARTIAL SUCCESS - Some channels failed but at least one succeeded");
+            LOG.warnf("Query %d: Failed channels: %s", request.getQueryId(), failedChannels);
         }
     }
     
     private void sendToChannel(NotificationChannel channel, NotificationRequest request) {
-        LOG.debugf("Routing notification to %s strategy for query %d", channel, request.getQueryId());
+        LOG.infof("🔀 ROUTING to %s strategy for query %d", channel, request.getQueryId());
         
         switch (channel) {
             case EMAIL -> emailStrategy.sendNotification(request);
@@ -92,7 +115,7 @@ public class NotificationAdapter implements NotificationPort {
             case SLACK -> slackStrategy.sendNotification(request);
             case DISCORD -> discordStrategy.sendNotification(request);
             default -> {
-                LOG.warnf("Unknown notification channel: %s", channel);
+                LOG.errorf("❌ UNKNOWN CHANNEL: %s for query %d", channel, request.getQueryId());
                 throw new RuntimeException("Unknown notification channel: " + channel);
             }
         }

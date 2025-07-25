@@ -46,15 +46,22 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
     
     @Override
     public void sendNotification(NotificationRequest request) {
+        LOG.infof("=== WHATSAPP STRATEGY - STARTING ===");
+        LOG.infof("Query ID: %d", request.getQueryId());
+        LOG.infof("User ID: %d, Email: %s", request.getUser().getId(), request.getUser().getEmail());
+        
         String phoneNumber = request.getUser().getChannelConfiguration(NotificationChannel.WHATSAPP);
+        LOG.infof("WhatsApp phone number from user config: %s", phoneNumber);
+        
         if (phoneNumber == null || phoneNumber.isEmpty()) {
-            LOG.warnf("WhatsApp phone number not configured for user ID %d (%s), skipping WhatsApp notification", 
+            LOG.errorf("❌ WHATSAPP STRATEGY FAILED - Phone number not configured for user ID %d (%s)", 
                     request.getUser().getId(), request.getUser().getEmail());
             throw new RuntimeException("WhatsApp phone number not configured for user");
         }
         
-        LOG.infof("WhatsApp notification requested for user %s (ID: %d) for query %d - Implementation not fully active", 
+        LOG.warnf("📱 WhatsApp notification requested for user %s (ID: %d) for query %d", 
                 request.getUser().getEmail(), request.getUser().getId(), request.getQueryId());
+        LOG.warnf("📱 WhatsApp implementation is not fully active - throwing exception");
         
         // Per ora lanciamo un'eccezione per indicare che WhatsApp non è completamente implementato
         throw new RuntimeException("WhatsApp notifications are not fully implemented yet");

@@ -25,20 +25,31 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     
     @Override
     public void sendNotification(NotificationRequest request) {
+        LOG.infof("=== EMAIL STRATEGY - STARTING ===");
+        LOG.infof("Query ID: %d", request.getQueryId());
+        LOG.infof("User ID: %d", request.getUser().getId());
+        
         // Check if user has email configured
         String userEmail = request.getUser().getEmail();
+        LOG.infof("User email from database: %s", userEmail);
+        
         if (userEmail == null || userEmail.trim().isEmpty()) {
-            LOG.warnf("Email address not configured for user ID %d, skipping email notification", 
+            LOG.errorf("❌ EMAIL STRATEGY FAILED - Email address not configured for user ID %d", 
                     request.getUser().getId());
             throw new RuntimeException("Email address not configured for user");
         }
         
         try {
-            LOG.infof("Sending email notification to %s for query %d", 
+            LOG.infof("📧 Preparing email notification to %s for query %d", 
                     userEmail, request.getQueryId());
             
             String subject = "Notificamy: Your AI-Generated Notification";
+            LOG.infof("Email subject: %s", subject);
+            
             String htmlBody = buildHtmlEmailBody(request);
+            LOG.infof("Email body built - Length: %d characters", htmlBody.length());
+            LOG.infof("Email body preview (first 200 chars): %s", 
+                    htmlBody.length() > 200 ? htmlBody.substring(0, 200) + "..." : htmlBody);
             
             // Configura le proprietà SMTP
             Properties props = new Properties();
@@ -49,7 +60,21 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             props.put("mail.smtp.starttls.required", String.valueOf(smtpConfig.isSmtpStartTls()));
             props.put("mail.smtp.ssl.protocols", "TLSv1.2");
             
-            LOG.infof("SMTP Configuration - Host: %s, Port: %d, Auth: %s, StartTLS: %s", 
+            LOG.infof("📧 SMTP Configuration:");
+            LOG.infof("  Host: %s", smtpConfig.getSmtpHost());
+            LOG.infof("  Port: %d", smtpConfig.getSmtpPort());
+            LOG.infof("  Username: %s", smtpConfig.getSmtpUsername());
+            LOG.infof("  From Email: %s", smtpConfig.getFromEmail());
+            LOG.infof("  From Name: %s", fromName);
+            LOG.infof("  Auth: %s", smtpConfig.isSmtpAuth());
+            LOG.infof("  StartTLS: %s", smtpConfig.isSmtpStartTls());
+            
+            LOG.infof("📧 Email Details:");
+            LOG.infof("  To: %s", userEmail);
+            LOG.infof("  Subject: %s", subject);
+            LOG.infof("  Content-Type: text/html; charset=UTF-8");
+            
+            LOG.infof("📧 Creating SMTP session...");
                     smtpConfig.getSmtpHost(), smtpConfig.getSmtpPort(), 
                     smtpConfig.isSmtpAuth(), smtpConfig.isSmtpStartTls());
             
@@ -62,24 +87,39 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             });
             
             // Abilita debug per troubleshooting
-            session.setDebug(true);
+            session.setDebug(false); // Disabilitato per evitare troppo output, riabilitare se necessario
+            
+            LOG.infof("📧 SMTP session created successfully");
             
             // Crea il messaggio
+            LOG.infof("📧 Creating email message...");
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(smtpConfig.getFromEmail(), fromName));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(userEmail));
             message.setSubject(subject, "UTF-8");
             message.setContent(htmlBody, "text/html; charset=UTF-8");
             
+            LOG.infof("📧 Email message created, attempting to send...");
+            long startTime = System.currentTimeMillis();
+            
             // Invia l'email
             Transport.send(message);
             
-            LOG.infof("Email sent successfully to %s for query %d", 
-                    userEmail, request.getQueryId());
+            long endTime = System.currentTimeMillis();
+            LOG.infof("✅ EMAIL SENT SUCCESSFULLY");
+            LOG.infof("  To: %s", userEmail);
+            LOG.infof("  Query ID: %d", request.getQueryId());
+            LOG.infof("  Send duration: %dms", (endTime - startTime));
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send email to %s for query %d", 
-                    userEmail, request.getQueryId());
+            LOG.errorf("❌ EMAIL SENDING FAILED");
+            LOG.errorf("  To: %s", userEmail);
+            LOG.errorf("  Query ID: %d", request.getQueryId());
+            LOG.errorf("  Error: %s", e.getMessage());
+            LOG.errorf("  Exception type: %s", e.getClass().getSimpleName());
+            if (e.getCause() != null) {
+                LOG.errorf("  Caused by: %s - %s", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+            }
             // Lanciamo l'eccezione per permettere al NotificationAdapter di gestirla
             throw new RuntimeException("Failed to send email notification: " + e.getMessage(), e);
         }
@@ -88,12 +128,12 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     private String buildHtmlEmailBody(NotificationRequest request) {
         // Se la risposta AI contiene già HTML, usala direttamente
         if (request.getAiResponse().trim().startsWith("<") && request.getAiResponse().contains("</")) {
-            LOG.info("AI response contains HTML, using it directly");
+            LOG.infof("📧 AI response contains HTML, using it directly");
             return request.getAiResponse();
         }
         
         // Altrimenti, crea un template HTML semplice
-        LOG.info("AI response is plain text, wrapping in HTML template");
+        LOG.infof("📧 AI response is plain text, wrapping in HTML template");
         return String.format("""
                 <!DOCTYPE html>
                 <html>
