@@ -126,6 +126,9 @@ public class NotificationService {
                     queryId, prompt, user, query.getEnabledChannels(), aiResponse
             );
             
+            LOG.infof("Created notification request for query %d with enabled channels: %s", 
+                    queryId, query.getEnabledChannels());
+            
             // Create notification record for tracking
             notificationRecord = notificationRecordPort.createNotificationRecord(notificationRequest);
             
@@ -137,15 +140,15 @@ public class NotificationService {
             try {
                 notificationPort.sendNotification(notificationRequest);
                 
-                // Se arriviamo qui, significa che almeno un canale è riuscito
-                // Per ora assumiamo che tutti i canali siano riusciti se non c'è eccezione
-                // In futuro, il NotificationAdapter potrebbe restituire informazioni più dettagliate
+                // Se arriviamo qui senza eccezioni, significa che almeno un canale è riuscito
+                // Il NotificationAdapter lancia eccezione solo se TUTTI i canali falliscono
                 successfulChannels.addAll(query.getEnabledChannels());
+                LOG.infof("Notification sending completed successfully for query %d", queryId);
                 
             } catch (Exception e) {
                 LOG.errorf(e, "Error sending notifications for query %d", queryId);
                 
-                // Se c'è un'eccezione, significa che tutti i canali sono falliti
+                // Se c'è un'eccezione dal NotificationAdapter, significa che tutti i canali sono falliti
                 failedChannels.addAll(query.getEnabledChannels());
                 errorMessages.append("Notification sending failed: ").append(e.getMessage());
             }

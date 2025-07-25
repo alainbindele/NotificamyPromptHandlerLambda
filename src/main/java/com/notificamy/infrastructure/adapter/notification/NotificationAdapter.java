@@ -33,14 +33,15 @@ public class NotificationAdapter implements NotificationPort {
     
     @Override
     public void sendNotification(NotificationRequest request) {
-        LOG.infof("Sending notifications for query %d through %d channels", 
-                request.getQueryId(), request.getChannels().size());
+        LOG.infof("Sending notifications for query %d through %d enabled channels: %s", 
+                request.getQueryId(), request.getChannels().size(), request.getChannels());
         
         List<Exception> exceptions = new ArrayList<>();
         List<NotificationChannel> successfulChannels = new ArrayList<>();
         List<NotificationChannel> failedChannels = new ArrayList<>();
         
         for (NotificationChannel channel : request.getChannels()) {
+            LOG.infof("Attempting to send notification via %s for query %d", channel, request.getQueryId());
             try {
                 sendToChannel(channel, request);
                 successfulChannels.add(channel);
@@ -48,12 +49,20 @@ public class NotificationAdapter implements NotificationPort {
             } catch (Exception e) {
                 failedChannels.add(channel);
                 exceptions.add(e);
-                LOG.errorf(e, "Failed to send notification via %s for query %d", channel, request.getQueryId());
+                LOG.errorf(e, "Failed to send notification via %s for query %d: %s", 
+                        channel, request.getQueryId(), e.getMessage());
             }
         }
         
         LOG.infof("Notification sending completed for query %d: %d successful, %d failed", 
                 request.getQueryId(), successfulChannels.size(), failedChannels.size());
+        
+        if (!successfulChannels.isEmpty()) {
+            LOG.infof("Successful channels for query %d: %s", request.getQueryId(), successfulChannels);
+        }
+        if (!failedChannels.isEmpty()) {
+            LOG.warnf("Failed channels for query %d: %s", request.getQueryId(), failedChannels);
+        }
         
         // Se tutti i canali sono falliti, lanciamo un'eccezione
         if (successfulChannels.isEmpty() && !failedChannels.isEmpty()) {
@@ -75,6 +84,8 @@ public class NotificationAdapter implements NotificationPort {
     }
     
     private void sendToChannel(NotificationChannel channel, NotificationRequest request) {
+        LOG.debugf("Routing notification to %s strategy for query %d", channel, request.getQueryId());
+        
         switch (channel) {
             case EMAIL -> emailStrategy.sendNotification(request);
             case WHATSAPP -> whatsAppStrategy.sendNotification(request);

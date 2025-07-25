@@ -48,15 +48,24 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
     public void sendNotification(NotificationRequest request) {
         String phoneNumber = request.getUser().getChannelConfiguration(NotificationChannel.WHATSAPP);
         if (phoneNumber == null || phoneNumber.isEmpty()) {
-            LOG.warnf("WhatsApp phone number not configured for user %s", request.getUser().getEmail());
-            return;
+            LOG.warnf("WhatsApp phone number not configured for user ID %d (%s), skipping WhatsApp notification", 
+                    request.getUser().getId(), request.getUser().getEmail());
+            throw new RuntimeException("WhatsApp phone number not configured for user");
         }
         
+        LOG.infof("WhatsApp notification requested for user %s (ID: %d) for query %d - Implementation not fully active", 
+                request.getUser().getEmail(), request.getUser().getId(), request.getQueryId());
+        
+        // Per ora lanciamo un'eccezione per indicare che WhatsApp non è completamente implementato
+        throw new RuntimeException("WhatsApp notifications are not fully implemented yet");
+        
+        /*
+        // Implementazione completa WhatsApp (commentata per ora)
         try {
             String apiToken = getWhatsAppApiToken();
             if (apiToken == null || apiToken.isEmpty()) {
                 LOG.error("WhatsApp API token not found in secrets");
-                return;
+                throw new RuntimeException("WhatsApp API token not configured");
             }
             
             String message = buildWhatsAppMessage(request);
@@ -81,15 +90,18 @@ public class WhatsAppNotificationStrategy implements NotificationStrategy {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             
             if (response.statusCode() == 200) {
-                LOG.infof("WhatsApp message sent successfully to %s", phoneNumber);
+                LOG.infof("WhatsApp message sent successfully to %s for user %s", phoneNumber, request.getUser().getEmail());
             } else {
-                LOG.errorf("WhatsApp API error: %d - %s", response.statusCode(), response.body());
+                LOG.errorf("WhatsApp API error for user %s: %d - %s", 
+                        request.getUser().getEmail(), response.statusCode(), response.body());
+                throw new RuntimeException("WhatsApp API returned error: " + response.statusCode());
             }
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send WhatsApp message to %s", phoneNumber);
+            LOG.errorf(e, "Failed to send WhatsApp message to %s for user %s", phoneNumber, request.getUser().getEmail());
             throw new RuntimeException("Failed to send WhatsApp message", e);
         }
+        */
     }
     
     private String getWhatsAppApiToken() {

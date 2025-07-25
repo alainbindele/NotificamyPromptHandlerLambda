@@ -33,11 +33,15 @@ public class SlackNotificationStrategy implements NotificationStrategy {
     public void sendNotification(NotificationRequest request) {
         String webhookUrl = request.getUser().getChannelConfiguration(NotificationChannel.SLACK);
         if (webhookUrl == null || webhookUrl.isEmpty()) {
-            LOG.warnf("Slack webhook URL not configured for user %s", request.getUser().getEmail());
-            return;
+            LOG.warnf("Slack webhook URL not configured for user ID %d (%s), skipping Slack notification", 
+                    request.getUser().getId(), request.getUser().getEmail());
+            throw new RuntimeException("Slack webhook URL not configured for user");
         }
         
         try {
+            LOG.infof("Sending Slack notification to user %s (ID: %d) for query %d", 
+                    request.getUser().getEmail(), request.getUser().getId(), request.getQueryId());
+            
             Map<String, Object> payload = buildSlackPayload(request);
             String requestBody = objectMapper.writeValueAsString(payload);
             
@@ -51,13 +55,17 @@ public class SlackNotificationStrategy implements NotificationStrategy {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             
             if (response.statusCode() == 200) {
-                LOG.infof("Slack message sent successfully to user %s", request.getUser().getEmail());
+                LOG.infof("Slack message sent successfully to user %s (ID: %d)", 
+                        request.getUser().getEmail(), request.getUser().getId());
             } else {
-                LOG.errorf("Slack webhook error: %d - %s", response.statusCode(), response.body());
+                LOG.errorf("Slack webhook error for user %s: %d - %s", 
+                        request.getUser().getEmail(), response.statusCode(), response.body());
+                throw new RuntimeException("Slack webhook returned error: " + response.statusCode());
             }
             
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to send Slack message to user %s", request.getUser().getEmail());
+            LOG.errorf(e, "Failed to send Slack message to user %s (ID: %d)", 
+                    request.getUser().getEmail(), request.getUser().getId());
             throw new RuntimeException("Failed to send Slack message", e);
         }
     }

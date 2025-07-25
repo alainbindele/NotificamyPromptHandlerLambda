@@ -25,9 +25,17 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     
     @Override
     public void sendNotification(NotificationRequest request) {
+        // Check if user has email configured
+        String userEmail = request.getUser().getEmail();
+        if (userEmail == null || userEmail.trim().isEmpty()) {
+            LOG.warnf("Email address not configured for user ID %d, skipping email notification", 
+                    request.getUser().getId());
+            throw new RuntimeException("Email address not configured for user");
+        }
+        
         try {
             LOG.infof("Sending email notification to %s for query %d", 
-                    request.getUser().getEmail(), request.getQueryId());
+                    userEmail, request.getQueryId());
             
             String subject = "Notificamy: Your AI-Generated Notification";
             String htmlBody = buildHtmlEmailBody(request);
@@ -59,7 +67,7 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             // Crea il messaggio
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(smtpConfig.getFromEmail(), fromName));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(request.getUser().getEmail()));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(userEmail));
             message.setSubject(subject, "UTF-8");
             message.setContent(htmlBody, "text/html; charset=UTF-8");
             
@@ -67,11 +75,11 @@ public class EmailNotificationStrategy implements NotificationStrategy {
             Transport.send(message);
             
             LOG.infof("Email sent successfully to %s for query %d", 
-                    request.getUser().getEmail(), request.getQueryId());
+                    userEmail, request.getQueryId());
             
         } catch (Exception e) {
             LOG.errorf(e, "Failed to send email to %s for query %d", 
-                    request.getUser().getEmail(), request.getQueryId());
+                    userEmail, request.getQueryId());
             // Lanciamo l'eccezione per permettere al NotificationAdapter di gestirla
             throw new RuntimeException("Failed to send email notification: " + e.getMessage(), e);
         }
