@@ -13,6 +13,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 @ApplicationScoped
 public class SlackNotificationStrategy implements NotificationStrategy {
@@ -103,6 +105,10 @@ public class SlackNotificationStrategy implements NotificationStrategy {
     private Map<String, Object> buildSlackPayload(NotificationRequest request) {
         LOG.infof("💬 Building Slack payload for user: %s", request.getUser().getName());
         
+        // Convert HTML AI response to Slack-compatible Markdown
+        String slackFormattedResponse = convertHtmlToSlackMarkdown(request.getAiResponse());
+        LOG.infof("💬 Converted AI response from HTML to Slack Markdown - Length: %d", slackFormattedResponse.length());
+        
         Map<String, Object> payload = Map.of(
             "text", "Notificamy Notification",
             "blocks", List.of(
@@ -130,7 +136,7 @@ public class SlackNotificationStrategy implements NotificationStrategy {
                         ),
                         Map.of(
                             "type", "mrkdwn",
-                            "text", String.format("*🤖 AI Response:*\n%s", request.getAiResponse())
+                            "text", String.format("*🤖 AI Response:*\n%s", slackFormattedResponse)
                         )
                     )
                 ),
@@ -148,5 +154,116 @@ public class SlackNotificationStrategy implements NotificationStrategy {
         
         LOG.infof("💬 Slack payload built successfully");
         return payload;
+    }
+    
+    /**
+     * Converts HTML content to Slack-compatible Markdown
+     * Slack supports a subset of Markdown with some specific formatting rules
+     */
+    private String convertHtmlToSlackMarkdown(String htmlContent) {
+        if (htmlContent == null || htmlContent.trim().isEmpty()) {
+            return htmlContent;
+        }
+        
+        LOG.infof("💬 Converting HTML to Slack Markdown - Input length: %d", htmlContent.length());
+        
+        String markdown = htmlContent;
+        
+        // Remove HTML comments (like <!-- <checked>true</checked> -->)
+        markdown = markdown.replaceAll("<!--.*?-->", "");
+        
+        // Remove <style> blocks completely
+        markdown = markdown.replaceAll("(?s)<style[^>]*>.*?</style>", "");
+        
+        // Convert HTML headings to Slack bold format
+        markdown = markdown.replaceAll("(?s)<h[1-6][^>]*>(.*?)</h[1-6]>", "*$1*\n");
+        
+        // Convert <strong> and <b> to Slack bold
+        markdown = markdown.replaceAll("(?s)<(?:strong|b)[^>]*>(.*?)</(?:strong|b)>", "*$1*");
+        
+        // Convert <em> and <i> to Slack italic
+        markdown = markdown.replaceAll("(?s)<(?:em|i)[^>]*>(.*?)</(?:em|i)>", "_$1_");
+        
+        // Convert <code> to Slack inline code
+        markdown = markdown.replaceAll("(?s)<code[^>]*>(.*?)</code>", "`$1`");
+        
+        // Convert <pre> to Slack code block
+        markdown = markdown.replaceAll("(?s)<pre[^>]*>(.*?)</pre>", "```$1```");
+        
+        // Convert <a> links to Slack link format
+        Pattern linkPattern = Pattern.compile("(?s)<a[^>]*href=[\"']([^\"']*)[\"'][^>]*>(.*?)</a>");
+        Matcher linkMatcher = linkPattern.matcher(markdown);
+        markdown = linkMatcher.replaceAll("<$1|$2>");
+        
+        // Convert <ul><li> to Slack bullet points
+        markdown = markdown.replaceAll("(?s)<ul[^>]*>", "");
+        markdown = markdown.replaceAll("(?s)</ul>", "");
+        markdown = markdown.replaceAll("(?s)<li[^>]*>(.*?)</li>", "• $1\n");
+        
+        // Convert <ol><li> to Slack numbered list
+        markdown = convertOrderedLists(markdown);
+        
+        // Convert <p> to line breaks
+        markdown = markdown.replaceAll("(?s)<p[^>]*>(.*?)</p>", "$1\n\n");
+        
+        // Convert <br> to line breaks
+        markdown = markdown.replaceAll("(?s)<br[^>]*>", "\n");
+        
+        // Convert <div> to line breaks (basic handling)
+        markdown = markdown.replaceAll("(?s)<div[^>]*>(.*?)</div>", "$1\n");
+        
+        // Remove remaining HTML tags
+        markdown = markdown.replaceAll("<[^>]+>", "");
+        
+        // Clean up HTML entities
+        markdown = markdown.replace("&lt;", "<");
+        markdown = markdown.replace("&gt;", ">");
+        markdown = markdown.replace("&amp;", "&");
+        markdown = markdown.replace("&quot;", "\"");
+        markdown = markdown.replace("&#39;", "'");
+        markdown = markdown.replace("&nbsp;", " ");
+        
+        // Clean up excessive whitespace and line breaks
+        markdown = markdown.replaceAll("\\n{3,}", "\n\n"); // Max 2 consecutive line breaks
+        markdown = markdown.replaceAll("[ \\t]+", " "); // Multiple spaces to single space
+        markdown = markdown.trim();
+        
+        // Ensure emojis are preserved (Slack supports Unicode emojis)
+        // No conversion needed for emojis like 🔔, 📈, etc.
+        
+        LOG.infof("💬 HTML to Slack Markdown conversion completed - Output length: %d", markdown.length());
+        LOG.infof("💬 Converted content preview: %s", 
+                markdown.length() > 200 ? markdown.substring(0, 200) + "..." : markdown);
+        
+        return markdown;
+    }
+    
+    /**
+     * Converts HTML ordered lists to numbered format for Slack
+     */
+    private String convertOrderedLists(String content) {
+        // This is a simplified approach - for more complex nested lists, 
+        // you might need a more sophisticated parser
+        Pattern olPattern = Pattern.compile("(?s)<ol[^>]*>(.*?)</ol>");
+        Matcher olMatcher = olPattern.matcher(content);
+        
+        StringBuffer result = new StringBuffer();
+        while (olMatcher.find()) {
+            String listContent = olMatcher.group(1);
+            Pattern liPattern = Pattern.compile("(?s)<li[^>]*>(.*?)</li>");
+            Matcher liMatcher = liPattern.matcher(listContent);
+            
+            StringBuilder numberedList = new StringBuilder();
+            int counter = 1;
+            while (liMatcher.find()) {
+                numberedList.append(counter).append(". ").append(liMatcher.group(1).trim()).append("\n");
+                counter++;
+            }
+            
+            olMatcher.appendReplacement(result, numberedList.toString());
+        }
+        olMatcher.appendTail(result);
+        
+        return result.toString();
     }
 }
